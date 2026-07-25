@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/api/app" }
+  ],
+  "functions": {
+    "api/app.js": {
+      "includeFiles": "api/app.html"
+    }
+  },
+  "headers": [
+    {
+      "source": "/manifest.json",
+      "headers": [{ "key": "Content-Type", "value": "application/manifest+json" }]
+    }
+  ]
+}

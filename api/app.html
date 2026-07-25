@@ -1,0 +1,2357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<meta name="color-scheme" content="dark">
+<title>Table Sense — Count &amp; Odds</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#17171C">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Table Sense">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#17171C;
+    --panel:#232329;
+    --panel-2:#2B2B33;
+    --ink:#EAEAEE;
+    --ink-soft:#A8A8B4;
+    --line:#38383F;
+
+    --green:#6BDB1A;
+    --green-dark:#8FE85B;
+    --green-bg:#1F3A0F;
+
+    --red:#FF6161;
+    --red-dark:#FF8F8F;
+    --red-bg:#3D1616;
+
+    --gold:#FFD23D;
+    --gold-dark:#FFDD6B;
+    --gold-bg:#3D3111;
+
+    --blue:#3DC0FF;
+    --blue-dark:#6ED0FF;
+    --blue-bg:#12314A;
+
+    --purple:#D89BFF;
+    --purple-dark:#E0B3FF;
+
+    --card-red:#FF6161;
+    --ink-onlight:#3C3C46;
+
+    --display: 'Baloo 2', 'Nunito', system-ui, sans-serif;
+    --body: 'Nunito', system-ui, sans-serif;
+    --mono: 'Nunito', system-ui, sans-serif; /* keep numerals in the same rounded body face */
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    min-height:100vh;
+    padding-bottom:48px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .rail{
+    background:var(--panel);
+    border-bottom:2px solid var(--line);
+    padding:16px 18px 14px;
+    position:sticky; top:0; z-index:20;
+  }
+  .rail h1{
+    margin:0;
+    font-family:var(--display);
+    font-weight:800;
+    font-size:1.5rem;
+    letter-spacing:-0.01em;
+    color:var(--ink);
+    display:flex; align-items:center; gap:8px;
+  }
+  .rail h1 .suit{color:var(--red); font-size:1.3rem;}
+  .rail .sub{
+    font-family:var(--body);
+    font-weight:700;
+    font-size:0.72rem;
+    color:var(--ink-soft);
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    margin-top:2px;
+  }
+
+  .sync-diagnostics{
+    margin-top:10px;
+    background:var(--panel-2);
+    border:2px solid var(--line);
+    border-radius:12px;
+    padding:10px 12px;
+    font-family:'Courier New', monospace;
+    font-size:0.68rem;
+    line-height:1.6;
+    color:var(--ink);
+    white-space:pre-wrap;
+    word-break:break-word;
+    max-height:260px;
+    overflow-y:auto;
+  }
+  .sync-diagnostics .ok{color:var(--green-dark);}
+  .sync-diagnostics .bad{color:var(--red-dark);}
+  .sync-diagnostics .label{color:var(--ink-soft); text-transform:uppercase; font-weight:700; letter-spacing:0.04em;}
+
+  .wrap{max-width:640px; margin:0 auto; padding:14px 14px 0;}
+
+  /* Count tray — the signature "scoreboard" element */
+  .tray{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .tray .cell{
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-bottom:4px solid var(--line);
+    border-radius:16px;
+    padding:12px 8px;
+    text-align:center;
+  }
+  .tray .cell .label{
+    font-family:var(--body);
+    font-weight:800;
+    font-size:0.62rem;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:4px;
+  }
+  .tray .cell .val{
+    font-family:var(--display);
+    font-size:1.9rem;
+    font-weight:800;
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+    line-height:1;
+  }
+  .tray .cell .val.pos{color:var(--green-dark);}
+  .tray .cell .val.neg{color:var(--red-dark);}
+
+  .heat{
+    height:10px;
+    border-radius:10px;
+    background:linear-gradient(90deg,var(--red),var(--gold),var(--green));
+    position:relative;
+    margin:4px 0 16px;
+  }
+  .heat .marker{
+    position:absolute; top:-4px;
+    width:4px; height:18px; background:var(--ink);
+    border-radius:2px;
+    transform:translateX(-2px);
+    transition:left 0.25s ease;
+  }
+
+  section{margin-bottom:16px;}
+  .section-title{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:0.82rem;
+    letter-spacing:0.01em;
+    text-transform:none;
+    color:var(--ink);
+    margin:0 0 8px 2px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .section-title .hint{color:var(--ink-soft); font-weight:700; font-size:0.7rem;}
+
+  .advice{
+    background:var(--blue-bg);
+    border:2px solid var(--blue);
+    border-radius:16px;
+    padding:12px 14px;
+    font-size:0.88rem;
+    font-weight:600;
+    line-height:1.45;
+    color:var(--ink);
+  }
+  .advice b{color:var(--blue-dark); font-weight:800;}
+
+  .hot-shoe-alert{
+    background:var(--gold-bg);
+    border:2px solid var(--gold);
+    border-radius:16px;
+    padding:12px 14px;
+    font-size:0.86rem;
+    font-weight:700;
+    line-height:1.45;
+    color:var(--ink);
+    margin-top:10px;
+  }
+
+  .insurance-alert{
+    background:rgba(216,155,255,0.14);
+    border:2px solid var(--purple);
+    border-radius:16px;
+    padding:12px 14px;
+    margin-top:10px;
+  }
+  .insurance-alert .title{
+    font-family:var(--display); font-weight:800; font-size:0.92rem;
+    color:var(--purple-dark); margin-bottom:4px;
+  }
+  .insurance-alert .body{
+    font-size:0.84rem; font-weight:600; line-height:1.45; color:var(--ink);
+  }
+  .insurance-alert .pctval{font-weight:800; color:var(--purple-dark);}
+
+  .decks-control{
+    display:flex; align-items:center; gap:10px;
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-bottom:4px solid var(--line);
+    border-radius:14px;
+    padding:10px 14px;
+    margin-bottom:10px;
+  }
+  .decks-control label{font-family:var(--body); font-weight:700; font-size:0.72rem; letter-spacing:0.03em; text-transform:uppercase; color:var(--ink-soft); flex:1;}
+  .decks-control select{
+    background:var(--panel-2); color:var(--ink); border:2px solid var(--line);
+    border-radius:10px; padding:6px 10px; font-family:var(--body); font-weight:700; font-size:0.85rem;
+  }
+
+  /* Hand tabs: Dealer / Player / Seats */
+  .hand-tabs{
+    display:flex;
+    gap:10px;
+    margin-bottom:8px;
+    overflow-x:auto;
+    padding:2px 2px 8px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .hand-tab{
+    flex:0 0 auto;
+    min-width:118px;
+    border-radius:16px;
+    border:2px solid var(--line);
+    border-bottom:4px solid var(--line);
+    padding:10px 12px 10px;
+    cursor:pointer;
+    background:var(--panel);
+    transition:border-color 0.15s ease, transform 0.08s ease, background 0.15s ease;
+  }
+  .hand-tab:active{transform:translateY(2px); border-bottom-width:2px;}
+  .hand-tab .who{
+    font-family:var(--body); font-size:0.68rem; letter-spacing:0.02em; text-transform:uppercase;
+    color:var(--hand-color, var(--ink-soft));
+    font-weight:800;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .hand-tab .who::before{
+    content:'';
+    display:inline-block;
+    width:9px; height:9px; border-radius:50%;
+    background:var(--hand-color, var(--ink-soft));
+    margin-right:5px;
+    vertical-align:middle;
+  }
+  .hand-tab .total-row{
+    min-height:32px;
+    display:flex; align-items:baseline; gap:6px; flex-wrap:wrap;
+    margin:5px 0 3px;
+  }
+  .hand-tab .total-num{
+    font-family:var(--display); font-size:1.9rem; font-weight:800; line-height:1;
+    color:var(--ink);
+  }
+  .hand-tab .total-num.status-bust{color:var(--red-dark);}
+  .hand-tab .total-num.status-blackjack{color:var(--green-dark);}
+  .hand-tab .total-num.status-soft{color:var(--gold-dark);}
+  .hand-tab .status-pill{
+    font-family:var(--body); font-size:0.6rem; font-weight:800; letter-spacing:0.03em;
+    padding:2px 7px; border-radius:20px; text-transform:uppercase;
+  }
+  .hand-tab .status-pill.status-bust{background:var(--red-bg); color:var(--red-dark);}
+  .hand-tab .status-pill.status-blackjack{background:var(--green-bg); color:var(--green-dark);}
+  .hand-tab .status-pill.status-soft{background:var(--gold-bg); color:var(--gold-dark);}
+  .hand-tab .hole-flag{
+    font-size:0.62rem; color:var(--ink-soft); font-family:var(--body); font-weight:700;
+    align-self:center;
+  }
+  .hand-tab .cards{
+    font-family:var(--body); font-size:0.88rem; font-weight:700; min-height:1.2em;
+    letter-spacing:0.01em; color:var(--ink-soft);
+  }
+  .hand-tab.active{
+    background:var(--hand-bg-tint, var(--panel-2));
+    border-color:var(--hand-color, var(--line));
+  }
+  .hand-tab.active .who{color:var(--hand-color);}
+  .hand-tab .card-chip{
+    margin-right:6px;
+    color:#1A1A1E;
+    background:var(--ink);
+    padding:1px 5px;
+    border-radius:6px;
+    font-weight:800;
+    display:inline-block;
+  }
+  .hand-tab .card-chip.red{color:var(--card-red); background:var(--ink); padding:1px 5px;}
+  .hand-tab .clear-x{
+    color:var(--ink-soft); font-size:0.8rem; cursor:pointer; font-weight:800;
+    padding:0 2px;
+  }
+
+  .reveal-btn{
+    width:100%;
+    padding:13px;
+    border-radius:14px;
+    border:none;
+    border-bottom:4px solid var(--gold-dark);
+    background:var(--gold);
+    color:#5A4300;
+    font-family:var(--display);
+    font-size:0.85rem;
+    font-weight:700;
+    letter-spacing:0.01em;
+    cursor:pointer;
+  }
+  .reveal-btn:active{transform:translateY(2px); border-bottom-width:2px;}
+
+  /* rank pad */
+  .pad{
+    display:grid;
+    grid-template-columns:repeat(5, 1fr);
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .pad button{
+    aspect-ratio:1/1;
+    border-radius:14px;
+    border:2px solid var(--line);
+    border-bottom:4px solid var(--line);
+    background:var(--panel);
+    color:var(--ink);
+    font-family:var(--display);
+    font-size:1.15rem;
+    font-weight:700;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:1px;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition:transform 0.08s ease, background 0.12s ease, border-color 0.12s ease;
+    position:relative;
+  }
+  .pad button:active{transform:translateY(2px); border-bottom-width:2px;}
+  .pad button.selected{border-color:var(--blue); background:var(--blue-bg); color:var(--blue-dark);}
+  .pad button .tag{
+    font-size:0.55rem;
+    letter-spacing:0.02em;
+    color:var(--ink-soft);
+    font-weight:700;
+  }
+  .pad button.selected .tag{color:var(--blue-dark);}
+  .pad button .remain{
+    position:absolute; bottom:3px; right:6px;
+    font-size:0.5rem; color:var(--ink-soft);
+    font-weight:700;
+  }
+  .pad button:disabled{opacity:0.35; cursor:default; border-bottom-width:2px; transform:none;}
+
+  /* suit pad */
+  .suit-pad{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .suit-pad button{
+    padding:14px 0;
+    border-radius:14px;
+    border:2px solid var(--ink);
+    border-bottom:4px solid var(--ink);
+    background:var(--ink);
+    font-size:1.5rem;
+    cursor:pointer;
+    color:#1A1A1E;
+    transition:transform 0.08s ease;
+  }
+  .suit-pad button:active{transform:translateY(2px); border-bottom-width:2px;}
+  .suit-pad button.red{
+    color:var(--card-red);
+    background:var(--ink);
+    border-color:var(--ink);
+    border-bottom-color:var(--ink);
+  }
+  .suit-pad button:disabled{opacity:0.35; cursor:default; transform:none;}
+  .suit-pad.hidden{display:none;}
+  .suit-hint{
+    font-family:var(--body); font-weight:700; font-size:0.75rem; color:var(--ink-soft);
+    text-align:center; margin:0 0 12px;
+  }
+
+  .row-actions{
+    display:flex; gap:8px; margin-top:4px;
+  }
+  .row-actions button{
+    flex:1;
+    padding:12px;
+    border-radius:14px;
+    border:none;
+    border-bottom:4px solid transparent;
+    background:var(--panel-2);
+    color:var(--ink);
+    font-family:var(--display);
+    font-size:0.78rem;
+    font-weight:700;
+    letter-spacing:0.01em;
+    cursor:pointer;
+    border:2px solid var(--line);
+  }
+  .row-actions button:active{transform:translateY(2px);}
+  .row-actions button.danger{color:var(--red-dark); background:var(--red-bg); border-color:var(--red-bg); border-bottom-color:#F0A3A3;}
+  .row-actions button.primary{color:var(--green-dark); background:var(--green-bg); border-color:var(--green-bg); border-bottom-color:#A9E687;}
+
+  .odds-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(70px,1fr));
+    gap:8px;
+  }
+  .odds-cell{
+    background:var(--panel);
+    border:2px solid var(--heat-border, var(--line));
+    border-radius:12px;
+    padding:9px 4px;
+    text-align:center;
+  }
+  .odds-cell .rank{font-family:var(--display); font-weight:700; font-size:0.9rem; color:var(--ink);}
+  .odds-cell .pct{font-family:var(--body); font-size:0.72rem; color:var(--heat-text, var(--ink-soft)); margin-top:2px; font-weight:800;}
+  .odds-cell .cnt{font-family:var(--body); font-size:0.58rem; color:var(--ink-soft); margin-top:1px; font-weight:600;}
+
+  .bignum{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-bottom:4px solid var(--line);
+    border-radius:14px;
+    padding:13px 15px;
+    margin-bottom:8px;
+  }
+  .bignum .k{font-family:var(--body); font-weight:700; font-size:0.76rem; color:var(--ink-soft);}
+  .bignum .v{font-family:var(--display); font-size:1.15rem; color:var(--ink); font-weight:800; text-align:right;}
+  .bignum .v small{font-size:0.6rem; color:var(--ink-soft); font-weight:600; display:block;}
+
+  .bust-meter-card{
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-bottom:4px solid var(--line);
+    border-radius:14px;
+    padding:13px 15px;
+    margin-bottom:8px;
+  }
+  .bust-meter-top{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    margin-bottom:9px;
+  }
+  .bust-meter-top .k{font-family:var(--body); font-weight:700; font-size:0.76rem; color:var(--ink-soft);}
+  .bust-meter-top .v{font-family:var(--display); font-size:1.15rem; color:var(--ink); font-weight:800;}
+  .bust-meter-track{
+    height:10px;
+    border-radius:10px;
+    background:var(--panel-2);
+    overflow:hidden;
+  }
+  .bust-meter-fill{
+    height:100%;
+    border-radius:10px;
+    background:linear-gradient(90deg, var(--green), var(--gold), var(--red));
+    transition:width 0.25s ease;
+  }
+
+  .side-panel{
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-bottom:4px solid var(--line);
+    border-radius:16px;
+    padding:13px 15px;
+  }
+  .side-panel + .side-panel{margin-top:10px;}
+  .side-panel .title{
+    font-family:var(--display); font-weight:700; font-size:0.78rem;
+    color:var(--purple-dark); margin-bottom:8px;
+  }
+  .side-panel .line{
+    display:flex; justify-content:space-between; padding:4px 0;
+    font-size:0.85rem; font-weight:600;
+  }
+  .side-panel .line .p{font-family:var(--body); font-weight:800; color:var(--ink);}
+  .side-panel .note{
+    font-family:var(--body); font-size:0.68rem; color:var(--ink-soft); font-weight:600;
+    margin-top:8px; line-height:1.5;
+  }
+
+  footer{
+    text-align:center; color:var(--ink-soft);
+    font-family:var(--body); font-size:0.62rem; font-weight:600; letter-spacing:0.01em;
+    margin-top:26px; padding:0 20px 20px; line-height:1.6;
+  }
+
+  /* ===== Views + bottom nav ===== */
+  body{padding-bottom:84px;} /* room for fixed bottom nav */
+  .view{display:block;}
+
+  .bottom-nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    display:flex;
+    background:var(--panel);
+    border-top:2px solid var(--line);
+    padding:6px 10px calc(6px + env(safe-area-inset-bottom));
+  }
+  .nav-btn{
+    flex:1;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    background:none; border:none;
+    padding:8px 4px 6px;
+    border-radius:12px;
+    cursor:pointer;
+    color:var(--ink-soft);
+    font-family:var(--body); font-weight:800; font-size:0.66rem;
+    letter-spacing:0.02em;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .nav-btn .nav-icon{font-size:1.35rem; line-height:1;}
+  .nav-btn.active{color:var(--green-dark); background:var(--green-bg);}
+  .nav-btn:active{transform:scale(0.95);}
+
+  /* ===== Cards view: big, minimal, tap-optimized ===== */
+  .cards-view-inner{padding-top:4px;}
+  .cards-view-inner .hand-tabs{margin-bottom:6px;}
+  .big-hint{
+    font-size:0.95rem; font-weight:800; margin:0 0 10px; color:var(--ink);
+    min-height:1.3em;
+  }
+  .big-pad{
+    grid-template-columns:repeat(4, 1fr);
+    gap:9px;
+    margin-bottom:10px;
+  }
+  .big-pad button{
+    font-size:1.7rem;
+    border-radius:18px;
+    aspect-ratio:1/1.05;
+  }
+  .big-pad button .tag{font-size:0.64rem;}
+  .big-pad button .remain{font-size:0.62rem;}
+  .big-suit-pad{gap:9px;}
+  .big-suit-pad button{
+    padding:20px 0;
+    font-size:2.1rem;
+    border-radius:18px;
+  }
+  .hand-tabs.stats-hands{overflow-x:visible; flex-wrap:wrap;}
+
+  /* ===== Suit popover: appears right after rank tap, same tap zone ===== */
+  .suit-popover-backdrop{
+    position:fixed; inset:0; z-index:50;
+    background:rgba(0,0,0,0.55);
+    display:flex; align-items:flex-end; justify-content:center;
+    padding:0 14px calc(14px + env(safe-area-inset-bottom));
+    animation:fadeIn 0.15s ease;
+  }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  @keyframes slideUp{ from{transform:translateY(24px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+  .suit-popover{
+    width:100%; max-width:420px;
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-radius:22px 22px 18px 18px;
+    padding:18px 16px calc(16px + env(safe-area-inset-bottom));
+    animation:slideUp 0.18s cubic-bezier(.2,.8,.3,1.2);
+  }
+  .suit-popover-title{
+    text-align:center;
+    font-family:var(--display); font-weight:800; font-size:1.3rem;
+    color:var(--ink); margin-bottom:14px;
+  }
+  #suitPadPopover{margin-bottom:10px;}
+  #suitPadPopover button{
+    padding:24px 0;
+    font-size:2.3rem;
+    border-radius:18px;
+  }
+  .suit-popover-cancel{
+    width:100%;
+    padding:11px;
+    border-radius:12px;
+    border:2px solid var(--line);
+    background:var(--panel-2);
+    color:var(--ink-soft);
+    font-family:var(--body); font-weight:700; font-size:0.8rem;
+    cursor:pointer;
+  }
+  .suit-popover-cancel:active{transform:translateY(1px);}
+
+  /* ===== Stats view: visual dashboard for a second screen ===== */
+  .stats-hero{
+    display:grid;
+    grid-template-columns:1fr 1.3fr 1fr;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .stats-hero-cell{
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-bottom:4px solid var(--line);
+    border-radius:18px;
+    padding:16px 8px;
+    text-align:center;
+  }
+  .stats-hero-cell.accent{
+    background:var(--green-bg);
+    border-color:var(--green);
+  }
+  .stats-hero-label{
+    font-family:var(--body); font-weight:800; font-size:0.66rem;
+    letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .stats-hero-cell.accent .stats-hero-label{color:var(--green-dark);}
+  .stats-hero-val{
+    font-family:var(--display); font-weight:800; font-size:2.1rem; line-height:1;
+    color:var(--ink); font-variant-numeric:tabular-nums;
+  }
+  .stats-hero-cell.accent .stats-hero-val{color:var(--green-dark); font-size:2.4rem;}
+  .stats-hero-val.pos{color:var(--green-dark);}
+  .stats-hero-val.neg{color:var(--red-dark);}
+
+  .stats-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .stats-card{
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-bottom:4px solid var(--line);
+    border-radius:16px;
+    padding:14px;
+  }
+  .stats-card.wide{grid-column:1 / -1;}
+  .stats-card-label{
+    font-family:var(--body); font-weight:700; font-size:0.72rem;
+    color:var(--ink-soft); margin-bottom:6px;
+  }
+  .stats-card-val{
+    font-family:var(--display); font-weight:800; font-size:1.5rem; color:var(--ink);
+  }
+
+  /* Default (mobile): stack the three dashboard columns as plain vertical sections. */
+  .stats-dashboard{ display:block; }
+  .stats-col + .stats-col{ margin-top:20px; }
+
+  /* ===== Wide screen (computer monitor): true no-scroll dashboard ===== */
+  @media (min-width: 900px){
+    body{ padding-bottom:0; }
+    #view-stats.view{
+      max-width:1400px;
+    }
+    #view-stats .stats-dashboard{
+      display:grid;
+      grid-template-columns: 1fr 1.3fr 1fr;
+      gap:16px;
+      align-items:start;
+      height: calc(100dvh - 160px); /* rail + bottom nav + wrap padding */
+      overflow:hidden;
+    }
+    #view-stats .stats-col{
+      height:100%;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    #view-stats .stats-col + .stats-col{ margin-top:0; }
+    #view-stats .section-title{ font-size:0.74rem; margin-bottom:6px; }
+    #view-stats .stats-hero-val{ font-size:1.6rem; }
+    #view-stats .stats-hero-cell.accent .stats-hero-val{ font-size:1.85rem; }
+    #view-stats .stats-hero-cell{ padding:10px 6px; }
+    #view-stats .advice{ font-size:0.76rem; padding:9px 11px; }
+    #view-stats .hot-shoe-alert, #view-stats .insurance-alert{ font-size:0.72rem; padding:9px 11px; }
+    #view-stats .insurance-alert .title{ font-size:0.8rem; }
+    #view-stats .stats-card{ padding:9px 11px; }
+    #view-stats .stats-card-val{ font-size:1.1rem; }
+    #view-stats .stats-grid{ gap:7px; }
+    #view-stats .hand-tabs.stats-hands{ gap:6px; }
+    #view-stats .hand-tab{ min-width:88px; padding:7px 9px 8px; }
+    #view-stats .hand-tab .total-num{ font-size:1.35rem; }
+    #view-stats .odds-grid{
+      grid-template-columns: repeat(4, 1fr);
+      gap:6px;
+      flex:1;
+      overflow:hidden;
+    }
+    #view-stats .odds-cell{ padding:6px 3px; }
+    #view-stats .odds-cell .pct{ font-size:0.64rem; }
+    #view-stats .odds-cell .cnt{ font-size:0.5rem; }
+    #view-stats .side-panel{ padding:9px 11px; }
+    #view-stats .side-panel .title{ font-size:0.72rem; margin-bottom:5px; }
+    #view-stats .side-panel .line{ padding:2px 0; font-size:0.76rem; }
+    #view-stats footer{ display:none; } /* no room, and nothing scrolls to reveal it anyway */
+  }
+</style>
+</head>
+<body>
+
+<div class="rail">
+  <h1><span class="suit">♠</span> Table Sense</h1>
+  <div class="sub" id="syncStatus" style="cursor:pointer; text-decoration:underline dotted;">Live count &amp; next-card odds (tap for sync info)</div>
+  <div id="syncDiagnostics" class="sync-diagnostics" style="display:none;">
+    <div id="syncDiagnosticsBody"></div>
+    <a href="#" id="signOutLink" style="display:inline-block; margin-top:10px; color:var(--red-dark, #FF8F8F); font-weight:700; text-decoration:underline;">Sign out</a>
+  </div>
+</div>
+
+<!-- ============ HOME VIEW ============ -->
+<div class="wrap view" id="view-home">
+
+  <div class="decks-control">
+    <label for="deckCount">Shoe size</label>
+    <select id="deckCount">
+      <option value="1">1 deck</option>
+      <option value="2">2 decks</option>
+      <option value="4">4 decks</option>
+      <option value="6" selected>6 decks</option>
+      <option value="8">8 decks</option>
+    </select>
+  </div>
+
+  <div class="decks-control">
+    <label for="otherPlayers">Other players at table</label>
+    <select id="otherPlayers">
+      <option value="0" selected>0</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+    </select>
+  </div>
+
+  <div class="decks-control" id="yourSeatControl" style="display:none;">
+    <label for="yourSeat">Your seat</label>
+    <select id="yourSeat"></select>
+  </div>
+
+  <!-- Count tray -->
+  <div class="tray">
+    <div class="cell">
+      <div class="label">Running</div>
+      <div class="val" id="runningCount">0</div>
+    </div>
+    <div class="cell">
+      <div class="label">True Ct</div>
+      <div class="val" id="trueCount">0.0</div>
+    </div>
+    <div class="cell">
+      <div class="label">Decks Left</div>
+      <div class="val" id="decksLeft">6.0</div>
+    </div>
+  </div>
+  <div class="heat"><div class="marker" id="heatMarker" style="left:50%;"></div></div>
+
+  <div class="advice" id="advice">
+    Neutral shoe. Play basic strategy — no count-based deviation yet.
+  </div>
+
+  <div class="hot-shoe-alert" id="hotShoeAlert" style="display:none;"></div>
+
+  <section>
+    <div class="section-title">Key odds</div>
+    <div class="bignum"><span class="k">P(next card is 10‑value)</span><span class="v" id="pTen">—</span></div>
+    <div class="bignum"><span class="k">P(next card is Ace)</span><span class="v" id="pAce">—</span></div>
+    <div class="bignum" style="align-items:flex-start;">
+      <span class="k" style="align-self:center;">P(dealer busts)</span>
+      <span class="v" id="pBust" style="text-align:right;">Enter dealer's upcard below</span>
+    </div>
+    <div class="bust-meter-card" id="pMyBustCard" style="display:none;">
+      <div class="bust-meter-top">
+        <span class="k">P(you bust if you hit)</span>
+        <span class="v" id="pMyBust">—</span>
+      </div>
+      <div class="bust-meter-track"><div class="bust-meter-fill" id="pMyBustFill" style="width:0%;"></div></div>
+    </div>
+    <div class="insurance-alert" id="insuranceAlert" style="display:none;"></div>
+  </section>
+
+  <section style="margin-top:16px;">
+    <div class="section-title">Whose card? <span class="hint" id="cardsSeenLabel">0 seen</span></div>
+    <div class="hand-tabs" id="handTabs"></div>
+    <div id="revealHoleWrap" style="display:none; margin-bottom:10px;">
+      <button id="revealHoleBtn" class="reveal-btn">👁 Dealer flips hole card — tap it in</button>
+    </div>
+
+    <div class="section-title" style="margin-top:4px;">Tap rank, then suit</div>
+    <div class="pad" id="pad"></div>
+    <div class="suit-pad" id="suitPad">
+      <button data-suit="♠">♠</button>
+      <button data-suit="♥" class="red">♥</button>
+      <button data-suit="♦" class="red">♦</button>
+      <button data-suit="♣">♣</button>
+    </div>
+    <div class="suit-hint" id="suitHint">Pick a rank above first</div>
+
+    <div class="row-actions">
+      <button class="danger" id="undoBtn">↩ Undo last</button>
+      <button class="primary" id="newRoundBtn">▶ New round</button>
+    </div>
+    <div class="row-actions" style="margin-top:8px;">
+      <button class="primary" id="resetBtn">⟲ New shoe</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">Side bets</div>
+    <div class="side-panel">
+      <div class="title">Perfect Pairs</div>
+      <div class="line"><span>Perfect (same rank &amp; suit)</span><span class="p" id="ppPerfect">—</span></div>
+      <div class="line"><span>Colored (same rank &amp; color)</span><span class="p" id="ppColored">—</span></div>
+      <div class="line"><span>Mixed (same rank only)</span><span class="p" id="ppMixed">—</span></div>
+      <div class="line"><span>Any pair</span><span class="p" id="ppAny">—</span></div>
+      <div class="note" id="ppNote">Baseline odds for this shoe.</div>
+    </div>
+    <div class="side-panel">
+      <div class="title">21+1 (your 2 cards + dealer upcard)</div>
+      <div class="line"><span>Suited trips</span><span class="p" id="tpSuitedTrips">—</span></div>
+      <div class="line"><span>Straight flush</span><span class="p" id="tpStraightFlush">—</span></div>
+      <div class="line"><span>Three of a kind</span><span class="p" id="tpTrips">—</span></div>
+      <div class="line"><span>Straight</span><span class="p" id="tpStraight">—</span></div>
+      <div class="line"><span>Flush</span><span class="p" id="tpFlush">—</span></div>
+      <div class="line"><span>Any win</span><span class="p" id="tpAny">—</span></div>
+      <div class="note" id="tpNote">Baseline odds for this shoe.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">Next card probability <span class="hint" id="remainLabel">312 left</span></div>
+    <div class="odds-grid" id="oddsGrid"></div>
+  </section>
+
+  <footer>Hi‑Lo counting system · True count = running ÷ decks remaining · Dealer stands on soft 17 · Side-bet odds computed exactly from remaining shoe composition · Estimates assume unseen cards are uniformly shuffled · For strategy practice only</footer>
+</div>
+
+<!-- ============ CARDS VIEW (fast input only) ============ -->
+<div class="wrap view" id="view-cards" style="display:none;">
+  <div class="cards-view-inner">
+    <div class="hot-shoe-alert" id="hotShoeAlertCards" style="display:none;"></div>
+    <div class="hand-tabs" id="handTabsCards"></div>
+    <div class="insurance-alert" id="insuranceAlertCards" style="display:none;"></div>
+    <div id="revealHoleWrapCards" style="display:none; margin-bottom:10px;">
+      <button id="revealHoleBtnCards" class="reveal-btn">👁 Dealer flips — tap it in</button>
+    </div>
+    <div class="suit-hint big-hint" id="suitHintCards">Pick a rank</div>
+    <div class="pad big-pad" id="padCards"></div>
+    <div class="row-actions" style="margin-top:10px;">
+      <button class="danger" id="undoBtnCards">↩ Undo</button>
+      <button class="primary" id="newRoundBtnCards">▶ New round</button>
+    </div>
+    <div class="row-actions" style="margin-top:8px;">
+      <button class="primary" id="resetBtnCards">⟲ New shoe</button>
+    </div>
+  </div>
+</div>
+
+<!-- Suit popover: appears right after a rank is tapped, dismissed on selection -->
+<div class="suit-popover-backdrop" id="suitPopoverBackdrop" style="display:none;">
+  <div class="suit-popover" id="suitPopover">
+    <div class="suit-popover-title" id="suitPopoverTitle">7 of…</div>
+    <div class="suit-pad big-suit-pad" id="suitPadPopover">
+      <button data-suit="♠">♠</button>
+      <button data-suit="♥" class="red">♥</button>
+      <button data-suit="♦" class="red">♦</button>
+      <button data-suit="♣">♣</button>
+    </div>
+    <button class="suit-popover-cancel" id="suitPopoverCancel">Cancel</button>
+  </div>
+</div>
+
+<!-- ============ STATS VIEW (visual overview for a second screen) ============ -->
+<div class="wrap view" id="view-stats" style="display:none;">
+  <div class="stats-dashboard">
+
+    <div class="stats-col stats-col-left">
+      <div class="stats-hero">
+        <div class="stats-hero-cell">
+          <div class="stats-hero-label">Running</div>
+          <div class="stats-hero-val" id="statRunning">0</div>
+        </div>
+        <div class="stats-hero-cell accent">
+          <div class="stats-hero-label">True Count</div>
+          <div class="stats-hero-val" id="statTrue">0.0</div>
+        </div>
+        <div class="stats-hero-cell">
+          <div class="stats-hero-label">Decks Left</div>
+          <div class="stats-hero-val" id="statDecks">6.0</div>
+        </div>
+      </div>
+      <div class="heat" style="margin:0 0 12px;"><div class="marker" id="statHeatMarker" style="left:50%;"></div></div>
+
+      <div class="advice" id="statAdvice" style="margin-bottom:10px;">Neutral shoe.</div>
+      <div class="hot-shoe-alert" id="hotShoeAlertStats" style="display:none;"></div>
+      <div class="insurance-alert" id="insuranceAlertStats" style="display:none;"></div>
+
+      <div class="stats-grid" style="margin-top:10px;">
+        <div class="stats-card">
+          <div class="stats-card-label">P(10‑value)</div>
+          <div class="stats-card-val" id="statPTen">—</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-label">P(Ace)</div>
+          <div class="stats-card-val" id="statPAce">—</div>
+        </div>
+        <div class="stats-card wide">
+          <div class="stats-card-label">P(dealer busts)</div>
+          <div class="stats-card-val" id="statPBust">—</div>
+        </div>
+        <div class="stats-card wide" id="statMyBustCard" style="display:none;">
+          <div class="stats-card-label">P(you bust if you hit)</div>
+          <div class="stats-card-val" id="statMyBust">—</div>
+          <div class="bust-meter-track" style="margin-top:8px;"><div class="bust-meter-fill" id="statMyBustFill" style="width:0%;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-col stats-col-mid">
+      <div class="section-title">Hands on the table</div>
+      <div class="hand-tabs stats-hands" id="handTabsStats"></div>
+
+      <div class="section-title" style="margin-top:14px;">Next card probability</div>
+      <div class="odds-grid" id="oddsGridStats"></div>
+    </div>
+
+    <div class="stats-col stats-col-right">
+      <div class="section-title">Side bets</div>
+      <div class="side-panel">
+        <div class="title">Perfect Pairs</div>
+        <div class="line"><span>Perfect</span><span class="p" id="statPpPerfect">—</span></div>
+        <div class="line"><span>Colored</span><span class="p" id="statPpColored">—</span></div>
+        <div class="line"><span>Mixed</span><span class="p" id="statPpMixed">—</span></div>
+        <div class="line"><span>Any pair</span><span class="p" id="statPpAny">—</span></div>
+      </div>
+      <div class="side-panel" style="margin-top:10px;">
+        <div class="title">21+1</div>
+        <div class="line"><span>Suited trips</span><span class="p" id="statTpSuitedTrips">—</span></div>
+        <div class="line"><span>Straight flush</span><span class="p" id="statTpStraightFlush">—</span></div>
+        <div class="line"><span>Three of a kind</span><span class="p" id="statTpTrips">—</span></div>
+        <div class="line"><span>Straight</span><span class="p" id="statTpStraight">—</span></div>
+        <div class="line"><span>Flush</span><span class="p" id="statTpFlush">—</span></div>
+        <div class="line"><span>Any win</span><span class="p" id="statTpAny">—</span></div>
+      </div>
+    </div>
+
+  </div>
+  <footer>Updates automatically as cards are entered on another device.</footer>
+</div>
+
+<!-- ============ BOTTOM NAV ============ -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-view="home">
+    <span class="nav-icon">🏠</span><span>Home</span>
+  </button>
+  <button class="nav-btn" data-view="cards">
+    <span class="nav-icon">🂡</span><span>Cards</span>
+  </button>
+  <button class="nav-btn" data-view="stats">
+    <span class="nav-icon">📊</span><span>Stats</span>
+  </button>
+</nav>
+
+
+<script>
+(function(){
+  const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const SUITS = ['♠','♥','♦','♣'];
+  const RED_SUITS = new Set(['♥','♦']);
+  const HILO = {'A':-1,'2':1,'3':1,'4':1,'5':1,'6':1,'7':0,'8':0,'9':0,'10':-1,'J':-1,'Q':-1,'K':-1};
+  const TEN_GROUP = new Set(['10','J','Q','K']);
+  const RANK_VALUE = {'A':11,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':10,'Q':10,'K':10};
+  // rank order for straights in 21+1 (A can be high or low; J/Q/K = 11/12/13, A-high uses 14 too)
+  const RANK_ORDER = {'A':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13};
+
+  let deckCount = 6;
+  let otherPlayerCount = 0;
+  let yourSeatPosition = 1; // 1-indexed position of "You" among the otherPlayerCount+1 player seats (before the dealer)
+  let seen = [];           // history of {rank,suit,who} tapped, for undo
+  let counts = {};         // "rank|suit" -> remaining count
+  let hands = {};          // handId -> [{rank,suit}, ...]  handId: 'dealer' | 'player' | 'other1'..'other6'
+  let handOrder = [];      // display order of handIds, seating order ending with dealer
+  let activeHand = 'dealer';
+  let pendingRank = null;
+  let selectedUpcard = null;
+  let dealerHoleRevealed = false; // true once the dealer's hole card has actually been entered
+  let holeRevealArmed = false;    // true while the next tap should be treated as the dealer's hole card
+
+  function cardKey(rank,suit){ return rank+'|'+suit; }
+
+  function handLabel(id){
+    if(id==='dealer') return 'Dealer';
+    if(id==='player') return 'You';
+    return 'Seat '+id.replace('other','');
+  }
+  function handClass(id){
+    if(id==='dealer') return 'dealer';
+    if(id==='player') return 'player';
+    return 'seat';
+  }
+  const SEAT_PALETTE = ['#8fae7f','#c97fae','#7fa8c9','#c9975a','#a389d4','#5fbfa0'];
+  function handColor(id){
+    if(id==='dealer') return '#6B9FC0';
+    if(id==='player') return '#c9a15a';
+    const n = parseInt(id.replace('other',''),10);
+    return SEAT_PALETTE[(n-1) % SEAT_PALETTE.length];
+  }
+
+  // Build seating order: otherPlayerCount+1 total player seats (numbered 1..N in turn order),
+  // with "You" placed at yourSeatPosition and the rest filled by other1..otherN-ish ids in order, then dealer last.
+  function rebuildHandOrder(){
+    const totalPlayerSeats = otherPlayerCount + 1;
+    yourSeatPosition = Math.max(1, Math.min(yourSeatPosition, totalPlayerSeats));
+
+    const seats = [];
+    let otherIdx = 1;
+    for(let pos=1; pos<=totalPlayerSeats; pos++){
+      if(pos === yourSeatPosition){
+        seats.push('player');
+      } else {
+        seats.push('other'+otherIdx);
+        otherIdx++;
+      }
+    }
+    handOrder = [...seats, 'dealer'];
+
+    // drop hands (and return their cards to shoe) for seats no longer in play
+    Object.keys(hands).forEach(id=>{
+      if(!handOrder.includes(id)){
+        returnHandToShoe(id);
+        delete hands[id];
+      }
+    });
+    handOrder.forEach(id=>{ if(!hands[id]) hands[id]=[]; });
+    if(!handOrder.includes(activeHand)) activeHand = 'dealer';
+  }
+
+  function returnHandToShoe(id){
+    const arr = hands[id] || [];
+    arr.forEach(c=>{
+      counts[cardKey(c.rank,c.suit)] += 1;
+    });
+    seen = seen.filter(s=> s.who !== id);
+  }
+
+  function updateYourSeatOptions(){
+    const sel = document.getElementById('yourSeat');
+    const ctrl = document.getElementById('yourSeatControl');
+    const totalPlayerSeats = otherPlayerCount + 1;
+    if(totalPlayerSeats <= 1){
+      ctrl.style.display = 'none';
+      return;
+    }
+    ctrl.style.display = 'flex';
+    const prev = yourSeatPosition;
+    sel.innerHTML = '';
+    for(let i=1;i<=totalPlayerSeats;i++){
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = 'Seat '+i+' of '+totalPlayerSeats+(i===totalPlayerSeats?' (right before dealer)':'');
+      sel.appendChild(opt);
+    }
+    yourSeatPosition = Math.max(1, Math.min(prev, totalPlayerSeats));
+    sel.value = yourSeatPosition;
+  }
+
+  function initShoe(){
+    counts = {};
+    RANKS.forEach(r=>{
+      SUITS.forEach(s=>{
+        counts[cardKey(r,s)] = deckCount; // deckCount copies of each specific rank+suit card
+      });
+    });
+    seen = [];
+    hands = {};
+    rebuildHandOrder();
+    activeHand = handOrder[0]; // start of a round: first seat, not the dealer
+    pendingRank = null;
+    selectedUpcard = null;
+    dealerHoleRevealed = false;
+    holeRevealArmed = false;
+    closeSuitPopover();
+    buildTabs();
+    render();
+    renderHotShoeAlert(null); // a fresh shoe is the baseline itself — nothing to flag
+  }
+
+  // Round over, new cards about to be dealt: clear each hand's cards from view,
+  // but the cards themselves stay burned from the shoe (no reshuffle) — running count is untouched.
+  function newRound(){
+    handOrder.forEach(id=>{ hands[id] = []; });
+    // seen/counts intentionally left alone — those cards are in the discard tray, not back in the shoe.
+    activeHand = handOrder[0];
+    pendingRank = null;
+    selectedUpcard = null;
+    dealerHoleRevealed = false;
+    holeRevealArmed = false;
+    closeSuitPopover();
+    renderTabs();
+    render();
+    renderHotShoeAlert(checkHotShoe());
+    pushState();
+  }
+
+  function renderHotShoeAlert(message){
+    ['hotShoeAlert','hotShoeAlertCards','hotShoeAlertStats'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      if(message){
+        el.textContent = message;
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    });
+  }
+
+  function totalRemaining(){
+    return Object.values(counts).reduce((a,b)=>a+b,0);
+  }
+  function rankRemaining(r){
+    let t=0; SUITS.forEach(s=> t+=counts[cardKey(r,s)]);
+    return t;
+  }
+  function runningCount(){
+    return seen.reduce((sum,c)=>sum+HILO[c.rank],0);
+  }
+  function decksRemaining(){
+    return totalRemaining()/52;
+  }
+  function trueCount(){
+    const dl = decksRemaining();
+    if(dl < 0.25) return runningCount();
+    return runningCount()/dl;
+  }
+
+  // ---------- rank/suit pad ----------
+  const PAD_IDS = ['pad','padCards'];
+  const SUIT_PAD_IDS = ['suitPad']; // suitPadCards replaced by the popover flow
+  const HAND_TABS_IDS = ['handTabs','handTabsCards','handTabsStats'];
+
+  function buildPad(){
+    PAD_IDS.forEach(padId=>{
+      const pad = document.getElementById(padId);
+      if(!pad) return;
+      const isCardsPad = (padId === 'padCards');
+      pad.innerHTML = '';
+      RANKS.forEach(r=>{
+        const btn = document.createElement('button');
+        const hv = HILO[r];
+        btn.innerHTML = `${r}<span class="tag">${hv>0?'+1':hv<0?'−1':'0'}</span><span class="remain" data-rank="${r}"></span>`;
+        btn.dataset.rank = r;
+        btn.addEventListener('click', ()=>{
+          if(isCardsPad){
+            openSuitPopover(r);
+          } else {
+            pendingRank = r;
+            renderPad();
+            renderSuitPad();
+          }
+        });
+        pad.appendChild(btn);
+      });
+    });
+  }
+
+  function buildSuitPad(){
+    SUIT_PAD_IDS.forEach(padId=>{
+      const wrap = document.getElementById(padId);
+      if(!wrap) return;
+      wrap.querySelectorAll('button').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          if(!pendingRank) return;
+          const s = btn.dataset.suit;
+          if(counts[cardKey(pendingRank,s)] <= 0) return;
+          commitCard(pendingRank, s);
+          pendingRank = null;
+          renderPad();
+          renderSuitPad();
+        });
+      });
+    });
+    buildSuitPopover();
+  }
+
+  // Shared logic for actually placing a card once rank+suit are both known,
+  // used by both the inline Home suit-pad and the Cards-view popover.
+  function commitCard(rank, suit){
+    if(holeRevealArmed && activeHand==='dealer'){
+      addCard(rank, suit, 'dealer', {isHoleReveal:true});
+      // stay armed for another draw unless the dealer's total is now 17+ (they'd stop)
+      const v = handValue(hands.dealer||[]);
+      if(v.status==='bust' || v.total>=17){
+        holeRevealArmed = false;
+      }
+    } else {
+      addCard(rank, suit, activeHand, {advance:true});
+    }
+  }
+
+  // ---------- Cards-view suit popover ----------
+  let popoverRank = null;
+  function buildSuitPopover(){
+    document.querySelectorAll('#suitPadPopover button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        if(!popoverRank) return;
+        const s = btn.dataset.suit;
+        if(counts[cardKey(popoverRank,s)] <= 0) return;
+        commitCard(popoverRank, s);
+        closeSuitPopover();
+        renderPad();
+        renderSuitPad();
+      });
+    });
+    document.getElementById('suitPopoverCancel')?.addEventListener('click', closeSuitPopover);
+    document.getElementById('suitPopoverBackdrop')?.addEventListener('click', (e)=>{
+      if(e.target.id === 'suitPopoverBackdrop') closeSuitPopover();
+    });
+  }
+  function openSuitPopover(rank){
+    if(rankRemaining(rank) <= 0) return;
+    popoverRank = rank;
+    const title = document.getElementById('suitPopoverTitle');
+    if(title) title.textContent = rank+' of…';
+    document.querySelectorAll('#suitPadPopover button').forEach(b=>{
+      const s = b.dataset.suit;
+      b.disabled = counts[cardKey(rank,s)] <= 0;
+    });
+    const backdrop = document.getElementById('suitPopoverBackdrop');
+    if(backdrop) backdrop.style.display = 'flex';
+  }
+  function closeSuitPopover(){
+    popoverRank = null;
+    const backdrop = document.getElementById('suitPopoverBackdrop');
+    if(backdrop) backdrop.style.display = 'none';
+  }
+
+  function renderPad(){
+    PAD_IDS.forEach(padId=>{
+      const pad = document.getElementById(padId);
+      if(!pad) return;
+      RANKS.forEach(r=>{
+        const btn = pad.querySelector(`button[data-rank="${r}"]`);
+        if(!btn) return;
+        const rem = rankRemaining(r);
+        btn.querySelector('.remain').textContent = rem;
+        btn.disabled = rem<=0;
+        btn.classList.toggle('selected', pendingRank===r);
+      });
+    });
+  }
+
+  function renderSuitPad(){
+    const homeHint = document.getElementById('suitHint');
+    const cardsHint = document.getElementById('suitHintCards');
+    const dealerDone = (activeHand==='dealer' && (hands.dealer||[]).length>=2 && !holeRevealArmed);
+    const dealerWaitingForFlip = (activeHand==='dealer' && (hands.dealer||[]).length===1 && !holeRevealArmed);
+    if(dealerDone || dealerWaitingForFlip){
+      const msg = dealerDone
+        ? "Dealer's hand is settled for this round"
+        : "Dealer's hole card isn't known yet — use Reveal below once it flips";
+      if(homeHint) homeHint.textContent = msg;
+      if(cardsHint) cardsHint.textContent = msg;
+      PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button').forEach(b=>b.disabled=true));
+      SUIT_PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button').forEach(b=>b.disabled=true));
+      return;
+    }
+    PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button').forEach(b=>{ if(rankRemaining(b.dataset.rank)>0) b.disabled=false; }));
+
+    // Cards view: always a simple one-line status, independent of pendingRank (popover handles suit).
+    if(cardsHint){
+      const drawNum = (hands.dealer||[]).length;
+      cardsHint.textContent = holeRevealArmed
+        ? (drawNum===1 ? "Tap the dealer's hole card rank" : "Dealer draws again — tap a rank")
+        : `Tap a rank for ${handLabel(activeHand)}`;
+    }
+
+    if(!pendingRank){
+      if(homeHint) homeHint.textContent = 'Pick a rank above first';
+      SUIT_PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button').forEach(b=>b.disabled=true));
+      return;
+    }
+    let msgHtml;
+    if(holeRevealArmed){
+      const drawNum = (hands.dealer||[]).length;
+      const label = drawNum===1 ? 'hole card' : 'dealer draws';
+      msgHtml = `${pendingRank} of… (dealer's <b style="color:${handColor('dealer')}">${label}</b>)`;
+    } else {
+      msgHtml = `${pendingRank} of… (adding to <span style="color:${handColor(activeHand)}">${handLabel(activeHand)}</span>)`;
+    }
+    if(homeHint) homeHint.innerHTML = msgHtml;
+    SUIT_PAD_IDS.forEach(padId=>{
+      document.getElementById(padId)?.querySelectorAll('button').forEach(b=>{
+        const s = b.dataset.suit;
+        b.disabled = counts[cardKey(pendingRank,s)] <= 0;
+      });
+    });
+  }
+
+  // ---------- hand tabs ----------
+  function buildTabs(){
+    HAND_TABS_IDS.forEach(wrapId=>{
+      const wrap = document.getElementById(wrapId);
+      if(!wrap) return;
+      const readOnly = (wrapId === 'handTabsStats');
+      wrap.innerHTML = '';
+      handOrder.forEach(id=>{
+        const tab = document.createElement('div');
+        tab.className = 'hand-tab '+handClass(id)+(id===activeHand?' active':'');
+        tab.dataset.hand = id;
+        tab.style.setProperty('--hand-color', handColor(id));
+        const clearChip = readOnly ? '' : `<span class="clear-x" data-clear="${id}">✕</span>`;
+        tab.innerHTML = `<div class="who">${handLabel(id)}${clearChip}</div>
+          <div class="total-row" data-total="${id}"></div>
+          <div class="cards" data-display="${id}">${handToChips(hands[id]||[])}</div>`;
+        if(readOnly){
+          tab.style.cursor = 'default';
+        } else {
+          tab.addEventListener('click', (e)=>{
+            if(e.target.classList.contains('clear-x')) return;
+            activeHand = id;
+            renderTabs();
+            renderSuitPad();
+            pushState();
+          });
+          tab.querySelector('.clear-x').addEventListener('click', (e)=>{
+            e.stopPropagation();
+            clearHand(id);
+          });
+        }
+        wrap.appendChild(tab);
+      });
+    });
+    renderTotals();
+  }
+
+  function clearHand(id){
+    returnHandToShoe(id);
+    hands[id] = [];
+    if(id==='dealer'){ dealerHoleRevealed = false; holeRevealArmed = false; }
+    render();
+    pushState();
+  }
+
+  function renderTabs(){
+    document.querySelectorAll('.hand-tab').forEach(tab=>{
+      const id = tab.dataset.hand;
+      tab.classList.toggle('active', id===activeHand);
+      const disp = tab.querySelector('[data-display]');
+      if(disp) disp.innerHTML = handToChips(hands[id]||[]);
+    });
+    renderTotals();
+  }
+
+  const STATUS_LABEL = {empty:'', normal:'', soft:'soft', blackjack:'BJ!', bust:'BUST'};
+  function renderTotals(){
+
+    document.querySelectorAll('[data-total]').forEach(el=>{
+      const id = el.dataset.total;
+      const cards = hands[id] || [];
+      const showHiddenFlag = (id==='dealer' && dealerAwaitingHole());
+      const hiddenNote = showHiddenFlag ? '<span class="hole-flag">🂠 face-down</span>' : '';
+      if(!cards || cards.length===0){
+        el.innerHTML = '';
+        return;
+      }
+      const v = handValue(cards);
+      const label = STATUS_LABEL[v.status];
+      el.innerHTML = `<span class="total-num status-${v.status}">${v.total}</span>${label?`<span class="status-pill status-${v.status}">${label}</span>`:''}${hiddenNote}`;
+    });
+    ['revealHoleWrap','revealHoleWrapCards'].forEach(id=>{
+      const revealWrap = document.getElementById(id);
+      if(revealWrap) revealWrap.style.display = dealerAwaitingHole() ? 'block' : 'none';
+    });
+  }
+
+  // Switches into "enter the dealer's hole card" mode: makes dealer the active hand
+  // and arms addCard() to accept this one specific card via the isHoleReveal path.
+  function startHoleReveal(){
+    activeHand = 'dealer';
+    holeRevealArmed = true;
+    render();
+    pushState();
+  }
+
+  function handToChips(cards){
+    if(!cards || cards.length===0) return '—';
+    return cards.map(c=>`<span class="card-chip ${RED_SUITS.has(c.suit)?'red':''}">${c.rank}${c.suit}</span>`).join('');
+  }
+
+  // True once the dealer's upcard is down but the hole card hasn't been entered yet.
+  function dealerAwaitingHole(){
+    return (hands.dealer||[]).length === 1 && !holeRevealArmed;
+  }
+  function dealerStillDrawing(){
+    if(!holeRevealArmed) return false;
+    const v = handValue(hands.dealer||[]);
+    return v.status!=='bust' && v.total<17;
+  }
+
+  // Best blackjack total for a set of visible cards, handling soft aces (11 -> 1 as needed).
+  // Returns {total, soft, status} where status is 'empty' | 'normal' | 'soft' | 'blackjack' | 'bust'.
+  function handValue(cards){
+    if(!cards || cards.length===0) return {total:0, soft:false, status:'empty'};
+    let total = 0, aces = 0;
+    cards.forEach(c=>{
+      total += RANK_VALUE[c.rank];
+      if(c.rank==='A') aces++;
+    });
+    let soft = aces > 0;
+    while(total > 21 && aces > 0){
+      total -= 10;
+      aces--;
+    }
+    soft = aces > 0; // still has an ace counted as 11
+    if(total > 21) return {total, soft:false, status:'bust'};
+    if(total === 21 && cards.length === 2) return {total, soft:false, status:'blackjack'};
+    return {total, soft, status: soft ? 'soft' : 'normal'};
+  }
+
+  // Probability that drawing exactly one more card busts this hand, given the current remaining shoe.
+  // A soft hand can never bust on the very next card (the ace can always demote 11->1 to absorb it),
+  // so this only applies meaningfully to hard totals.
+  function bustOnHitProbability(cards){
+    const v = handValue(cards);
+    if(v.status==='empty' || v.status==='bust' || v.status==='blackjack') return null;
+    if(v.soft) return 0;
+    const tot = totalRemaining();
+    if(tot<=0) return 0;
+    let bustCount = 0;
+    RANKS.forEach(r=>{
+      const c = rankRemaining(r);
+      if(c<=0) return;
+      let effectiveVal = RANK_VALUE[r];
+      if(r==='A'){
+        effectiveVal = (v.total + 11 > 21) ? 1 : 11;
+      }
+      if(v.total + effectiveVal > 21) bustCount += c;
+    });
+    return bustCount/tot;
+  }
+
+  function addCard(rank, suit, who, opts){
+    if(counts[cardKey(rank,suit)] <= 0) return;
+    // Guard: the dealer's hole card must come in through revealHoleCard(), not the normal pad,
+    // since in a real round you don't know it yet when it would normally be your "turn" to log it.
+    if(who === 'dealer' && (hands.dealer||[]).length >= 1 && !(opts && opts.isHoleReveal)){
+      return;
+    }
+    counts[cardKey(rank,suit)] -= 1;
+    seen.push({rank,suit,who,auto:!!(opts&&opts.autoSuit)});
+    if(!hands[who]) hands[who]=[];
+    hands[who].push({rank,suit});
+    if(who==='dealer' && (opts&&opts.isHoleReveal)){
+      dealerHoleRevealed = true;
+    }
+    if(opts && opts.advance){
+      advanceToNextHand();
+    }
+    render();
+    pushState();
+  }
+
+  // Move active hand to the next seat in table order, skipping the dealer's slot
+  // once their upcard is already down (their hole card is entered separately via Reveal).
+  function advanceToNextHand(){
+    const idx = handOrder.indexOf(activeHand);
+    if(idx === -1) return;
+    let nextIdx = (idx+1) % handOrder.length;
+    let nextId = handOrder[nextIdx];
+    if(nextId === 'dealer' && (hands.dealer||[]).length >= 1){
+      // dealer already has their upcard down for this round — skip past them,
+      // their hole card is only entered when you hit Reveal.
+      nextIdx = (nextIdx+1) % handOrder.length;
+      nextId = handOrder[nextIdx];
+    }
+    activeHand = nextId;
+  }
+
+  function undo(){
+    const last = seen.pop();
+    if(!last) return;
+    counts[cardKey(last.rank,last.suit)] += 1;
+    const arr = hands[last.who];
+    if(arr){
+      const i = arr.map(c=>c.rank+c.suit).lastIndexOf(last.rank+last.suit);
+      if(i>=0) arr.splice(i,1);
+    }
+    // if the card we just undid was the dealer's hole card, re-arm the reveal flow
+    if(last.who==='dealer' && (hands.dealer||[]).length<=1){
+      dealerHoleRevealed = false;
+      holeRevealArmed = false;
+    }
+    render();
+    pushState();
+  }
+
+  function pct(n,d){
+    if(d<=0) return '0.0%';
+    return (100*n/d).toFixed(1)+'%';
+  }
+
+  // Maps "current share vs baseline share" ratio to a color.
+  // ratio ~1.0 (normal) -> neutral cream/gold. ratio >1 (enriched, more likely than usual) -> green.
+  // ratio <1 (depleted, less likely than usual) -> red. Clamped so one card's swing doesn't max the scale.
+  function heatColorForRatio(ratio){
+    const clamped = Math.max(0.5, Math.min(1.5, ratio)); // 0.5x to 1.5x of baseline
+    const t = (clamped - 0.5) / 1.0; // 0..1
+    // interpolate red(low) -> gold(neutral, t=0.5) -> green(high)
+    // text uses the light, AA-safe-on-dark tokens; border uses the base saturated tones for visual pop.
+    if(t < 0.5){
+      const localT = t/0.5;
+      return {
+        text: lerpColor('#FF8F8F', '#FFDD6B', localT),
+        border: lerpColor('#FF6161', '#FFD23D', localT)
+      };
+    } else {
+      const localT = (t-0.5)/0.5;
+      return {
+        text: lerpColor('#FFDD6B', '#8FE85B', localT),
+        border: lerpColor('#FFD23D', '#6BDB1A', localT)
+      };
+    }
+  }
+  function lerpColor(a, b, t){
+    const pa = hexToRgb(a), pb = hexToRgb(b);
+    const r = Math.round(pa.r + (pb.r-pa.r)*t);
+    const g = Math.round(pa.g + (pb.g-pa.g)*t);
+    const bl = Math.round(pa.b + (pb.b-pa.b)*t);
+    return `rgb(${r},${g},${bl})`;
+  }
+  function hexToRgb(hex){
+    const n = parseInt(hex.replace('#',''),16);
+    return {r:(n>>16)&255, g:(n>>8)&255, b:n&255};
+  }
+
+  function advice(tc){
+    if(tc >= 3){
+      return `<b>Shoe favors the player.</b> True count +${tc.toFixed(1)}. Consider increasing bet size; take insurance if offered at TC ≥ +3; stand on more marginal totals (e.g. 16 vs 10).`;
+    } else if(tc >= 1.5){
+      return `<b>Slightly player-favorable.</b> True count +${tc.toFixed(1)}. Modest bet increase reasonable. Basic strategy still applies for most hands.`;
+    } else if(tc <= -2){
+      return `<b>Shoe favors the dealer.</b> True count ${tc.toFixed(1)}. Consider betting minimum; play more conservatively (hit more, double less on marginal hands).`;
+    } else {
+      return `Near-neutral shoe (TC ${tc.toFixed(1)}). Play standard basic strategy.`;
+    }
+  }
+
+  // ---------- dealer bust (exact recursion, rank-level, suit-agnostic) ----------
+  function dealerBustProbability(upRank, deckStateByRank){
+    function total(state){ let t=0; for(const r in state) t+=state[r]; return t; }
+    function draw(sumHigh, hasSoftAce, state){
+      let total_ = sumHigh, soft = hasSoftAce;
+      while(total_ > 21 && soft){ total_ -= 10; soft=false; }
+      if(total_ > 21) return 1;
+      if(total_ >= 17) return 0; // stands on hard 17+ and soft 17 (common rule)
+      const tot = total(state);
+      if(tot===0) return 0;
+      let bustProb = 0;
+      for(const r of RANKS){
+        const c = state[r];
+        if(c<=0) continue;
+        const p = c/tot;
+        state[r]--;
+        bustProb += p * draw(sumHigh+RANK_VALUE[r], hasSoftAce||(r==='A'), state);
+        state[r]++;
+      }
+      return bustProb;
+    }
+    const stateCopy = Object.assign({}, deckStateByRank);
+    if(stateCopy[upRank] > 0) stateCopy[upRank]--;
+    return draw(RANK_VALUE[upRank], upRank==='A', stateCopy);
+  }
+
+  function renderBust(){
+    const el = document.getElementById('pBust');
+    const dealerCards = hands.dealer || [];
+    if(dealerCards.length === 0){
+      el.textContent = "Enter dealer's upcard below";
+      el.style.color = '';
+      return;
+    }
+    const upRank = dealerCards[0].rank;
+    const rankCounts = {}; RANKS.forEach(r=>rankCounts[r]=rankRemaining(r));
+    const p = dealerBustProbability(upRank, rankCounts);
+    el.textContent = (p*100).toFixed(1)+'% (upcard '+upRank+')';
+    el.style.color = p>=0.4 ? 'var(--green-dark)' : (p<=0.25 ? 'var(--red-dark)' : 'var(--gold-dark)');
+  }
+
+  function renderMyBust(){
+    const card = document.getElementById('pMyBustCard');
+    if(!card) return;
+    const playerCards = hands.player || [];
+    const p = bustOnHitProbability(playerCards);
+    if(p === null){
+      card.style.display = 'none';
+      return;
+    }
+    card.style.display = 'block';
+    const pctText = (p*100).toFixed(1)+'%';
+    document.getElementById('pMyBust').textContent = pctText;
+    document.getElementById('pMyBustFill').style.width = (p*100).toFixed(1)+'%';
+  }
+
+  // Shows only right after the dealer's upcard lands and it's an Ace — the exact moment
+  // insurance would be offered. P(dealer blackjack) = P(hole card is any 10-value card).
+  function renderInsurance(){
+    const els = ['insuranceAlert','insuranceAlertCards','insuranceAlertStats'].map(id=>document.getElementById(id)).filter(Boolean);
+    const dealerCards = hands.dealer || [];
+    const upcardIsAce = dealerCards.length>=1 && dealerCards[0].rank === 'A';
+    if(!upcardIsAce || !dealerAwaitingHole()){
+      els.forEach(el=>el.style.display='none');
+      return;
+    }
+    const tot = totalRemaining();
+    let tenCount = 0;
+    TEN_GROUP.forEach(r=>tenCount+=rankRemaining(r));
+    const p = tot>0 ? tenCount/tot : 0;
+    const pctText = (p*100).toFixed(1)+'%';
+    const verdict = p >= 1/3
+      ? 'Insurance is a statistically fair-to-good side bet right now.'
+      : 'Insurance is still a losing bet on average at this price.';
+    els.forEach(el=>{
+      el.style.display = 'block';
+      el.innerHTML = `<div class="title">🂡 Dealer shows an Ace</div><div class="body">P(dealer has blackjack) = <span class="pctval">${pctText}</span> — ${verdict}</div>`;
+    });
+  }
+
+  // ---------- Perfect Pairs (from player's first 2 cards) ----------
+  // ---------- Pre-deal baseline odds (before any cards are dealt this round) ----------
+  // Exact probability a 2-card draw from the current shoe forms each Perfect Pairs category.
+  function baselinePerfectPairs(){
+    const tot = totalRemaining();
+    const totalCombos = comb(tot,2);
+    if(totalCombos<=0) return {perfect:0, colored:0, mixed:0, any:0};
+    let perfect=0, colored=0, mixed=0;
+    RANKS.forEach(r=>{
+      const bySuit = SUITS.map(s=>counts[cardKey(r,s)]);
+      // perfect: same rank AND same suit -> pairs within one specific card's count
+      SUITS.forEach((s,i)=>{ perfect += comb(bySuit[i],2); });
+      // colored: same rank, same color, different suit -> pairs across the 2 suits of one color
+      const blackTotal = bySuit[0]+bySuit[3]; // ♠,♣ assuming SUITS order ['♠','♥','♦','♣']
+      const redTotal = bySuit[1]+bySuit[2];   // ♥,♦
+      const blackPairs = comb(blackTotal,2) - comb(bySuit[0],2) - comb(bySuit[3],2);
+      const redPairs = comb(redTotal,2) - comb(bySuit[1],2) - comb(bySuit[2],2);
+      colored += blackPairs + redPairs;
+      // mixed: same rank, different color
+      const rankTotal = bySuit.reduce((a,b)=>a+b,0);
+      const allRankPairs = comb(rankTotal,2);
+      const sameColorPairs = comb(blackTotal,2)+comb(redTotal,2);
+      mixed += allRankPairs - sameColorPairs;
+    });
+    const any = perfect+colored+mixed;
+    return {
+      perfect: perfect/totalCombos,
+      colored: colored/totalCombos,
+      mixed: mixed/totalCombos,
+      any: any/totalCombos
+    };
+  }
+  function comb(n,k){
+    if(n<k || k<0) return 0;
+    if(k===0) return 1;
+    if(k===1) return n;
+    if(k===2) return n*(n-1)/2;
+    if(k===3) return n*(n-1)*(n-2)/6;
+    return 0;
+  }
+  // Baseline probability of a natural blackjack or a hard/soft 20 from a 2-card draw off the current shoe.
+  // Blackjack = one Ace + one 10-value card. 20 = two 10-value cards (the only 2-card combo that sums to 20).
+  function baselineBlackjackAnd20(){
+    const tot = totalRemaining();
+    const totalCombos = comb(tot,2);
+    if(totalCombos<=0) return {blackjack:0, twenty:0};
+    const aceCount = rankRemaining('A');
+    let tenCount = 0;
+    TEN_GROUP.forEach(r=>tenCount+=rankRemaining(r));
+    const blackjackCombos = aceCount*tenCount;
+    const twentyCombos = comb(tenCount,2);
+    return {
+      blackjack: blackjackCombos/totalCombos,
+      twenty: twentyCombos/totalCombos
+    };
+  }
+
+  // Same odds calculations but against a hypothetical full fresh shoe of the current deck count —
+  // used as the "normal" reference point for the hot-shoe alert.
+  function freshShoeOdds(){
+    const freshCounts = {};
+    RANKS.forEach(r=>SUITS.forEach(s=>{ freshCounts[cardKey(r,s)] = deckCount; }));
+    const tot = deckCount*52;
+    const totalCombos2 = comb(tot,2);
+    const totalCombos3 = comb(tot,3);
+
+    const rankRem = r=>{ let t=0; SUITS.forEach(s=>t+=freshCounts[cardKey(r,s)]); return t; };
+    const aceCount = rankRem('A');
+    let tenCount = 0; TEN_GROUP.forEach(r=>tenCount+=rankRem(r));
+    const blackjack = (aceCount*tenCount)/totalCombos2;
+    const twenty = comb(tenCount,2)/totalCombos2;
+
+    let perfect=0, colored=0, mixed=0;
+    RANKS.forEach(r=>{
+      const bySuit = SUITS.map(s=>freshCounts[cardKey(r,s)]);
+      SUITS.forEach((s,i)=>{ perfect += comb(bySuit[i],2); });
+      const blackTotal = bySuit[0]+bySuit[3], redTotal = bySuit[1]+bySuit[2];
+      colored += (comb(blackTotal,2)-comb(bySuit[0],2)-comb(bySuit[3],2)) + (comb(redTotal,2)-comb(bySuit[1],2)-comb(bySuit[2],2));
+      const rankTotal = bySuit.reduce((a,b)=>a+b,0);
+      mixed += comb(rankTotal,2) - (comb(blackTotal,2)+comb(redTotal,2));
+    });
+    const anyPair = (perfect+colored+mixed)/totalCombos2;
+
+    // 21+1 "any win" baseline (suited trips + straight flush + trips + straight + flush)
+    let tp_suitedTrips=0, tp_trips=0, tp_flush=0, tp_straight=0, tp_straightFlush=0;
+    RANKS.forEach(r=>{
+      const bySuit = SUITS.map(s=>freshCounts[cardKey(r,s)]);
+      const rankTotal = bySuit.reduce((a,b)=>a+b,0);
+      tp_trips += comb(rankTotal,3);
+      SUITS.forEach((s,i)=>{ tp_suitedTrips += comb(bySuit[i],3); });
+    });
+    tp_trips -= tp_suitedTrips;
+    SUITS.forEach(s=>{
+      const suitCount = RANKS.reduce((a,r)=>a+freshCounts[cardKey(r,s)],0);
+      tp_flush += comb(suitCount,3);
+    });
+    const order = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+    const triples = [];
+    for(let i=0;i<=order.length-3;i++) triples.push([order[i],order[i+1],order[i+2]]);
+    triples.push(['Q','K','A']);
+    triples.forEach(([r1,r2,r3])=>{
+      const c1 = SUITS.map(s=>freshCounts[cardKey(r1,s)]);
+      const c2 = SUITS.map(s=>freshCounts[cardKey(r2,s)]);
+      const c3 = SUITS.map(s=>freshCounts[cardKey(r3,s)]);
+      const t1=c1.reduce((a,b)=>a+b,0), t2=c2.reduce((a,b)=>a+b,0), t3=c3.reduce((a,b)=>a+b,0);
+      tp_straight += t1*t2*t3;
+      SUITS.forEach((s,i)=>{ tp_straightFlush += c1[i]*c2[i]*c3[i]; });
+    });
+    tp_straight -= tp_straightFlush;
+    tp_flush -= tp_straightFlush;
+    const anyTwentyOnePlusOne = (tp_suitedTrips+tp_straightFlush+tp_trips+tp_straight+tp_flush)/totalCombos3;
+
+    return { blackjack, twenty, anyPair, anyTwentyOnePlusOne };
+  }
+
+  // Compares current-shoe odds to the fresh-shoe reference and returns a hot-shoe message, or null.
+  const HOT_THRESHOLD = 1.5;   // worth a gentle mention
+  const VERY_HOT_THRESHOLD = 2.0; // worth a stronger callout
+  function checkHotShoe(){
+    const fresh = freshShoeOdds();
+    const bjAnd20 = baselineBlackjackAnd20();
+    const pp = baselinePerfectPairs();
+    const tp = baseline21plus1();
+
+    const candidates = [
+      {label:'blackjack', ratio: fresh.blackjack>0 ? bjAnd20.blackjack/fresh.blackjack : 1, pct: bjAnd20.blackjack},
+      {label:'a 20', ratio: fresh.twenty>0 ? bjAnd20.twenty/fresh.twenty : 1, pct: bjAnd20.twenty},
+      {label:'a pair (Perfect Pairs)', ratio: fresh.anyPair>0 ? pp.any/fresh.anyPair : 1, pct: pp.any},
+      {label:'a 21+1 win', ratio: fresh.anyTwentyOnePlusOne>0 ? tp.any/fresh.anyTwentyOnePlusOne : 1, pct: tp.any}
+    ];
+
+    const hot = candidates.filter(c=>c.ratio >= HOT_THRESHOLD).sort((a,b)=>b.ratio-a.ratio);
+    if(hot.length===0) return null;
+
+    const veryHot = hot.filter(c=>c.ratio >= VERY_HOT_THRESHOLD);
+    const tier = veryHot.length>0 ? veryHot : hot;
+    const names = tier.map(c=>c.label);
+    const strongest = tier[0];
+    const intensity = strongest.ratio >= VERY_HOT_THRESHOLD ? 'unusually high' : 'notably elevated';
+
+    let list;
+    if(names.length===1) list = names[0];
+    else if(names.length===2) list = names[0]+' and '+names[1];
+    else list = names.slice(0,-1).join(', ')+', and '+names[names.length-1];
+
+    return `🔥 This shoe is running hot: odds of ${list} ${names.length>1?'are':'is'} ${intensity} this round (${strongest.ratio.toFixed(1)}× a fresh shoe).`;
+  }
+
+
+  // Exact probability a 3-card draw from the current shoe lands each 21+1 category.
+  // Enumerates by rank/suit category counts rather than individual card identities (fast, exact).
+  function baseline21plus1(){
+    const tot = totalRemaining();
+    const totalCombos = comb(tot,3);
+    if(totalCombos<=0) return {suitedTrips:0, straightFlush:0, trips:0, straight:0, flush:0, any:0};
+    let suitedTrips=0, straightFlush=0, trips=0, straight=0, flush=0;
+
+    // Trips and suited trips: choose 3 of the same rank (suited trips only possible with 2+ decks,
+    // since it needs 3 copies of the identical rank+suit card, e.g. three 7♠ from three different decks).
+    RANKS.forEach(r=>{
+      const bySuit = SUITS.map(s=>counts[cardKey(r,s)]);
+      const rankTotal = bySuit.reduce((a,b)=>a+b,0);
+      trips += comb(rankTotal,3);
+      SUITS.forEach((s,i)=>{ suitedTrips += comb(bySuit[i],3); });
+    });
+    trips -= suitedTrips; // "trips" as a distinct payout category excludes the suited-trips subset
+
+    // Flushes (all 3 same suit, any ranks) and straight flushes (same suit + consecutive ranks).
+    SUITS.forEach(s=>{
+      const suitCount = RANKS.reduce((a,r)=>a+counts[cardKey(r,s)],0);
+      flush += comb(suitCount,3);
+    });
+
+    // Straights (any suits, 3 consecutive ranks) and straight flushes (subtract from flush/straight overlap).
+    // Build list of consecutive rank triples, including A-2-3 low and Q-K-A high.
+    const order = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+    const triples = [];
+    for(let i=0;i<=order.length-3;i++){
+      triples.push([order[i],order[i+1],order[i+2]]);
+    }
+    triples.push(['Q','K','A']); // ace-high straight
+
+    triples.forEach(([r1,r2,r3])=>{
+      // straight (any suits): product of counts across the 3 ranks, summed over all suit combinations
+      const c1 = SUITS.map(s=>counts[cardKey(r1,s)]);
+      const c2 = SUITS.map(s=>counts[cardKey(r2,s)]);
+      const c3 = SUITS.map(s=>counts[cardKey(r3,s)]);
+      const t1 = c1.reduce((a,b)=>a+b,0), t2 = c2.reduce((a,b)=>a+b,0), t3 = c3.reduce((a,b)=>a+b,0);
+      straight += t1*t2*t3;
+      // straight flush: same suit across all 3
+      SUITS.forEach((s,i)=>{
+        straightFlush += c1[i]*c2[i]*c3[i];
+      });
+    });
+
+    // straight count above currently includes straight-flush combos too (same-suit run is a subset of "any suits" run) — that's correct additively since we display them as separate categories, but "straight" as a payout category should exclude straight-flush hands per standard 21+1 rules.
+    straight -= straightFlush;
+    // flush should also exclude straight-flush and suited-trips (suitedTrips is always 0 here).
+    flush -= straightFlush;
+
+    const any = suitedTrips+straightFlush+trips+straight+flush;
+    return {
+      suitedTrips: suitedTrips/totalCombos,
+      straightFlush: straightFlush/totalCombos,
+      trips: trips/totalCombos,
+      straight: straight/totalCombos,
+      flush: flush/totalCombos,
+      any: any/totalCombos
+    };
+  }
+
+  function fmtPct(p){ return (p*100).toFixed(1)+'%'; }
+
+  function renderPerfectPairs(){
+    const ids = ['ppPerfect','ppColored','ppMixed','ppAny'];
+    const playerCards = hands.player || [];
+    const noteEl = document.getElementById('ppNote');
+
+    if(playerCards.length === 0){
+      // No cards dealt yet this round: show the baseline odds for the shoe as it stands right now.
+      const b = baselinePerfectPairs();
+      document.getElementById('ppPerfect').textContent = fmtPct(b.perfect);
+      document.getElementById('ppColored').textContent = fmtPct(b.colored);
+      document.getElementById('ppMixed').textContent = fmtPct(b.mixed);
+      document.getElementById('ppAny').textContent = fmtPct(b.any);
+      if(noteEl) noteEl.textContent = 'Baseline odds for this shoe — updates once your cards are dealt.';
+      return;
+    }
+
+    if(playerCards.length === 1){
+      // Only your first card is known — show baseline odds too (2nd card is still unknown),
+      // since a single card doesn't change the pairing math in a way worth a special case.
+      const b = baselinePerfectPairs();
+      document.getElementById('ppPerfect').textContent = fmtPct(b.perfect);
+      document.getElementById('ppColored').textContent = fmtPct(b.colored);
+      document.getElementById('ppMixed').textContent = fmtPct(b.mixed);
+      document.getElementById('ppAny').textContent = fmtPct(b.any);
+      if(noteEl) noteEl.textContent = 'Baseline odds — waiting on your 2nd card.';
+      return;
+    }
+
+    const c1 = playerCards[0];
+    const c2 = playerCards[1];
+    // reconstruct shoe as it was right after card1 (add card2 back in)
+    const shoeAfterCard1 = Object.assign({}, counts);
+    shoeAfterCard1[cardKey(c2.rank,c2.suit)] += 1;
+    const tot = Object.values(shoeAfterCard1).reduce((a,b)=>a+b,0);
+
+    let perfectCount = shoeAfterCard1[cardKey(c1.rank,c1.suit)];
+    let sameRankCount = 0, sameColorCount = 0;
+    SUITS.forEach(s=>{
+      const remain = shoeAfterCard1[cardKey(c1.rank,s)];
+      sameRankCount += remain;
+      if(RED_SUITS.has(s) === RED_SUITS.has(c1.suit)) sameColorCount += remain;
+    });
+    const coloredNotPerfect = sameColorCount - perfectCount;
+    const mixedCount = sameRankCount - sameColorCount;
+
+    document.getElementById('ppPerfect').textContent = pct(perfectCount, tot);
+    document.getElementById('ppColored').textContent = pct(coloredNotPerfect, tot);
+    document.getElementById('ppMixed').textContent = pct(mixedCount, tot);
+    document.getElementById('ppAny').textContent = pct(sameRankCount, tot);
+    if(noteEl) noteEl.textContent = 'Exact odds from your actual first 2 cards.';
+  }
+
+  // ---------- 21+1 (player's 2 cards + dealer upcard = 3-card poker hand) ----------
+  function isSuited(cards){
+    return cards.every(c=>c.suit===cards[0].suit);
+  }
+  function isStraight(cards){
+    // handle Ace as 1 or 14
+    let vals = cards.map(c=>RANK_ORDER[c.rank]).sort((a,b)=>a-b);
+    const hasAce = cards.some(c=>c.rank==='A');
+    function consecutive(v){
+      return (v[1]===v[0]+1) && (v[2]===v[1]+1);
+    }
+    if(consecutive(vals)) return true;
+    if(hasAce){
+      // try ace-high: replace 1 with 14
+      let vals2 = cards.map(c=> c.rank==='A' ? 14 : RANK_ORDER[c.rank]).sort((a,b)=>a-b);
+      if(consecutive(vals2)) return true;
+    }
+    return false;
+  }
+  function evaluate21plus1(cards){
+    const ranks = cards.map(c=>c.rank);
+    const trips = ranks[0]===ranks[1] && ranks[1]===ranks[2];
+    const suited = isSuited(cards);
+    const straight = isStraight(cards);
+    if(trips && suited) return 'suitedTrips';
+    if(straight && suited) return 'straightFlush';
+    if(trips) return 'trips';
+    if(straight) return 'straight';
+    if(suited) return 'flush';
+    return null;
+  }
+
+  function render21plus1(){
+    const ids = ['tpSuitedTrips','tpStraightFlush','tpTrips','tpStraight','tpFlush','tpAny'];
+    const playerCards = hands.player || [];
+    const noteEl = document.getElementById('tpNote');
+
+    if(playerCards.length < 2 || !selectedUpcard21){
+      // No hand in play yet (or dealer upcard not down): show the pre-deal baseline for this shoe.
+      const b = baseline21plus1();
+      document.getElementById('tpSuitedTrips').textContent = fmtPct(b.suitedTrips);
+      document.getElementById('tpStraightFlush').textContent = fmtPct(b.straightFlush);
+      document.getElementById('tpTrips').textContent = fmtPct(b.trips);
+      document.getElementById('tpStraight').textContent = fmtPct(b.straight);
+      document.getElementById('tpFlush').textContent = fmtPct(b.flush);
+      document.getElementById('tpAny').textContent = fmtPct(b.any);
+      if(noteEl) noteEl.textContent = 'Baseline odds for this shoe — updates once your cards and the dealer upcard are dealt.';
+      return;
+    }
+    // enumerate all possible dealer upcard suits remaining in shoe (rank fixed = selectedUpcard21, suit unknown)
+    const results = {suitedTrips:0, straightFlush:0, trips:0, straight:0, flush:0};
+    let totalWeight = 0;
+    SUITS.forEach(s=>{
+      const key = cardKey(selectedUpcard21, s);
+      const c = counts[key];
+      if(c<=0) return;
+      totalWeight += c;
+      const hand = [playerCards[0], playerCards[1], {rank:selectedUpcard21, suit:s}];
+      const outcome = evaluate21plus1(hand);
+      if(outcome) results[outcome] += c;
+    });
+    if(totalWeight===0){
+      ids.forEach(id=>document.getElementById(id).textContent='—');
+      if(noteEl) noteEl.textContent = '';
+      return;
+    }
+    document.getElementById('tpSuitedTrips').textContent = pct(results.suitedTrips, totalWeight);
+    document.getElementById('tpStraightFlush').textContent = pct(results.straightFlush, totalWeight);
+    document.getElementById('tpTrips').textContent = pct(results.trips, totalWeight);
+    document.getElementById('tpStraight').textContent = pct(results.straight, totalWeight);
+    document.getElementById('tpFlush').textContent = pct(results.flush, totalWeight);
+    const anyWin = results.suitedTrips+results.straightFlush+results.trips+results.straight+results.flush;
+    document.getElementById('tpAny').textContent = pct(anyWin, totalWeight);
+    if(noteEl) noteEl.textContent = 'Exact odds from your 2 cards + dealer upcard.';
+  }
+
+  // 21+1 needs the dealer's upcard rank (first card dealt to the dealer hand)
+  let selectedUpcard21 = null;
+  function syncUpcard21(){
+    const dealerCards = hands.dealer || [];
+    selectedUpcard21 = dealerCards.length >= 1 ? dealerCards[0].rank : null;
+  }
+
+  function renderOddsGrid(gridId, tot){
+    const grid = document.getElementById(gridId);
+    if(!grid) return;
+    grid.innerHTML = '';
+    const BASELINE_SHARE = {};
+    RANKS.forEach(r=>{ BASELINE_SHARE[r] = 1/13; });
+    const sortedRanks = [...RANKS].sort((a,b)=> rankRemaining(b) - rankRemaining(a));
+    sortedRanks.forEach(r=>{
+      const c = rankRemaining(r);
+      const currentShare = tot>0 ? c/tot : 0;
+      const baseline = BASELINE_SHARE[r];
+      const ratio = baseline>0 ? currentShare/baseline : 1;
+      const cell = document.createElement('div');
+      cell.className = 'odds-cell';
+      const heat = heatColorForRatio(ratio);
+      cell.style.setProperty('--heat-text', heat.text);
+      cell.style.setProperty('--heat-border', heat.border);
+      cell.innerHTML = `<div class="rank">${r}</div><div class="pct">${pct(c,tot)}</div><div class="cnt">${c} left</div>`;
+      grid.appendChild(cell);
+    });
+  }
+
+  function render(){
+    const rc = runningCount();
+    const tc = trueCount();
+    const dl = decksRemaining();
+    const tot = totalRemaining();
+
+    document.getElementById('runningCount').textContent = (rc>0?'+':'')+rc;
+    document.getElementById('runningCount').className = 'val '+(rc>0?'pos':rc<0?'neg':'');
+    document.getElementById('trueCount').textContent = (tc>0?'+':'')+tc.toFixed(1);
+    document.getElementById('trueCount').className = 'val '+(tc>0?'pos':tc<0?'neg':'');
+    document.getElementById('decksLeft').textContent = dl.toFixed(1);
+    document.getElementById('cardsSeenLabel').textContent = seen.length+' seen';
+    document.getElementById('remainLabel').textContent = tot+' left';
+
+    const clamped = Math.max(-5, Math.min(5, tc));
+    document.getElementById('heatMarker').style.left = (((clamped+5)/10)*100)+'%';
+    document.getElementById('advice').innerHTML = advice(tc);
+
+    renderTabs();
+    renderPad();
+    renderSuitPad();
+
+    renderOddsGrid('oddsGrid', tot);
+    renderOddsGrid('oddsGridStats', tot);
+
+    const tenPct = pct(TEN_GROUP.size ? [...TEN_GROUP].reduce((a,r)=>a+rankRemaining(r),0) : 0, tot);
+    const acePct = pct(rankRemaining('A'), tot);
+    document.getElementById('pTen').textContent = tenPct;
+    document.getElementById('pAce').textContent = acePct;
+
+    renderBust();
+    renderMyBust();
+    renderInsurance();
+    renderPerfectPairs();
+    syncUpcard21();
+    render21plus1();
+
+    // ---- Stats view mirror ----
+    const statRunning = document.getElementById('statRunning');
+    if(statRunning){
+      statRunning.textContent = (rc>0?'+':'')+rc;
+      statRunning.className = 'stats-hero-val '+(rc>0?'pos':rc<0?'neg':'');
+      document.getElementById('statTrue').textContent = (tc>0?'+':'')+tc.toFixed(1);
+      document.getElementById('statDecks').textContent = dl.toFixed(1);
+      document.getElementById('statHeatMarker').style.left = (((clamped+5)/10)*100)+'%';
+      document.getElementById('statAdvice').innerHTML = advice(tc);
+      document.getElementById('statPTen').textContent = tenPct;
+      document.getElementById('statPAce').textContent = acePct;
+      document.getElementById('statPBust').textContent = document.getElementById('pBust').textContent;
+
+      const myBustCard = document.getElementById('pMyBustCard');
+      const statMyBustCard = document.getElementById('statMyBustCard');
+      if(statMyBustCard && myBustCard){
+        statMyBustCard.style.display = myBustCard.style.display;
+        document.getElementById('statMyBust').textContent = document.getElementById('pMyBust').textContent;
+        document.getElementById('statMyBustFill').style.width = document.getElementById('pMyBustFill').style.width;
+      }
+
+      ['ppPerfect','ppColored','ppMixed','ppAny'].forEach(id=>{
+        const src = document.getElementById(id);
+        const dst = document.getElementById('stat'+id[0].toUpperCase()+id.slice(1));
+        if(src && dst) dst.textContent = src.textContent;
+      });
+      ['tpSuitedTrips','tpStraightFlush','tpTrips','tpStraight','tpFlush','tpAny'].forEach(id=>{
+        const src = document.getElementById(id);
+        const dst = document.getElementById('stat'+id[0].toUpperCase()+id.slice(1));
+        if(src && dst) dst.textContent = src.textContent;
+      });
+    }
+  }
+
+  document.getElementById('deckCount').addEventListener('change', (e)=>{
+    deckCount = parseInt(e.target.value,10);
+    initShoe();
+    pushState();
+  });
+  document.getElementById('otherPlayers').addEventListener('change', (e)=>{
+    otherPlayerCount = parseInt(e.target.value,10);
+    updateYourSeatOptions();
+    rebuildHandOrder();
+    buildTabs();
+    render();
+    pushState();
+  });
+  document.getElementById('yourSeat').addEventListener('change', (e)=>{
+    yourSeatPosition = parseInt(e.target.value,10);
+    rebuildHandOrder();
+    buildTabs();
+    render();
+    pushState();
+  });
+  document.getElementById('undoBtn').addEventListener('click', undo);
+  document.getElementById('undoBtnCards').addEventListener('click', undo);
+  document.getElementById('newRoundBtn').addEventListener('click', newRound);
+  document.getElementById('newRoundBtnCards').addEventListener('click', newRound);
+  document.getElementById('revealHoleBtn').addEventListener('click', startHoleReveal);
+  document.getElementById('revealHoleBtnCards').addEventListener('click', startHoleReveal);
+  const resetButtons = [document.getElementById('resetBtn'), document.getElementById('resetBtnCards')].filter(Boolean);
+  const RESET_LABEL = '⟲ New shoe';
+  const RESET_CONFIRM_LABEL = '⚠ Tap again to confirm';
+  let resetArmed = false;
+  let resetArmTimer = null;
+  function setResetLabel(label){ resetButtons.forEach(b=>b.textContent = label); }
+  function handleResetClick(){
+    if(seen.length===0){
+      initShoe();
+      pushState();
+      return;
+    }
+    if(!resetArmed){
+      resetArmed = true;
+      setResetLabel(RESET_CONFIRM_LABEL);
+      clearTimeout(resetArmTimer);
+      resetArmTimer = setTimeout(()=>{
+        resetArmed = false;
+        setResetLabel(RESET_LABEL);
+      }, 3000);
+    } else {
+      resetArmed = false;
+      clearTimeout(resetArmTimer);
+      setResetLabel(RESET_LABEL);
+      initShoe();
+      pushState();
+    }
+  }
+  resetButtons.forEach(b=>b.addEventListener('click', handleResetClick));
+
+  // ---------- View switching ----------
+  const VIEWS = ['home','cards','stats'];
+  let activeView = 'home';
+  function switchView(view){
+    activeView = view;
+    VIEWS.forEach(v=>{
+      const el = document.getElementById('view-'+v);
+      if(el) el.style.display = (v===view) ? 'block' : 'none';
+    });
+    document.querySelectorAll('.nav-btn').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.view===view);
+    });
+  }
+  document.querySelectorAll('.nav-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>switchView(btn.dataset.view));
+  });
+
+  // ---------- Cross-device sync via a real backend (/api/state, Redis-backed) ----------
+  const lastPushedVersionKey = 'lastPushedVersion';
+  let lastPushedVersion = 0;
+  let lastKnownRemoteVersion = 0;
+  let syncing = false;
+  let diagnosticsOpen = false;
+
+  // Running log of exactly what's happened, for the diagnostics panel.
+  const diag = {
+    pushCount: 0, pullCount: 0,
+    lastPush: null,  // {time, ok, version, error}
+    lastPull: null,  // {time, ok, foundData, remoteVersion, adopted, error}
+    lastPullRaw: null
+  };
+
+  function serializeState(){
+    return {
+      v: ++lastPushedVersion,
+      deckCount, otherPlayerCount, yourSeatPosition,
+      seen, counts, hands, handOrder, activeHand,
+      dealerHoleRevealed, holeRevealArmed, selectedUpcard21,
+      ts: Date.now()
+    };
+  }
+
+  function applyState(s){
+    deckCount = s.deckCount;
+    otherPlayerCount = s.otherPlayerCount;
+    yourSeatPosition = s.yourSeatPosition;
+    seen = s.seen;
+    counts = s.counts;
+    hands = s.hands;
+    handOrder = s.handOrder;
+    activeHand = s.activeHand;
+    dealerHoleRevealed = s.dealerHoleRevealed;
+    holeRevealArmed = s.holeRevealArmed;
+    selectedUpcard21 = s.selectedUpcard21;
+    lastKnownRemoteVersion = s.v;
+    // reflect deck/seat controls in the UI
+    const dc = document.getElementById('deckCount'); if(dc) dc.value = String(deckCount);
+    const op = document.getElementById('otherPlayers'); if(op) op.value = String(otherPlayerCount);
+    updateYourSeatOptions();
+    buildTabs();
+    render();
+  }
+
+  async function pushState(){
+    diag.pushCount++;
+    try{
+      const state = serializeState();
+      const res = await fetch('/api/state', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({value: JSON.stringify(state)})
+      });
+      if(res.status === 401){
+        diag.lastPush = {time: Date.now(), ok:false, error: 'Not authenticated (401) — session may have expired, try reloading'};
+        setSyncStatus('Not signed in — tap for details');
+        renderDiagnostics();
+        return;
+      }
+      if(!res.ok){
+        const text = await res.text().catch(()=> '');
+        diag.lastPush = {time: Date.now(), ok:false, error: 'HTTP '+res.status+' — '+text.slice(0,200)};
+        setSyncStatus('Push failed — tap for details');
+        renderDiagnostics();
+        return;
+      }
+      lastKnownRemoteVersion = state.v;
+      diag.lastPush = {time: Date.now(), ok:true, version: state.v};
+      setSyncStatus('Synced just now (v'+state.v+')');
+    } catch(err){
+      diag.lastPush = {time: Date.now(), ok:false, error: (err && err.message) ? err.message : String(err)};
+      setSyncStatus('Push failed — tap for details');
+    }
+    renderDiagnostics();
+  }
+
+  async function pullState(){
+    if(syncing) return;
+    syncing = true;
+    diag.pullCount++;
+    try{
+      const res = await fetch('/api/state');
+      if(res.status === 401){
+        diag.lastPull = {time: Date.now(), ok:false, error: 'Not authenticated (401) — session may have expired, try reloading'};
+        syncing = false;
+        renderDiagnostics();
+        return;
+      }
+      if(!res.ok){
+        const text = await res.text().catch(()=> '');
+        diag.lastPull = {time: Date.now(), ok:false, error: 'HTTP '+res.status+' — '+text.slice(0,200)};
+        syncing = false;
+        renderDiagnostics();
+        return;
+      }
+      const body = await res.json();
+      const hasValue = !!(body && body.value);
+      diag.lastPullRaw = hasValue ? (body.value.length+' chars, starts: '+body.value.slice(0,40)) : '(no value stored yet)';
+      if(hasValue){
+        const remote = JSON.parse(body.value);
+        const willAdopt = !!(remote.v && remote.v > lastKnownRemoteVersion);
+        diag.lastPull = {time: Date.now(), ok:true, foundData:true, remoteVersion: remote.v, localVersion: lastKnownRemoteVersion, adopted: willAdopt};
+        if(willAdopt){
+          applyState(remote);
+          setSyncStatus('Updated from another device (v'+remote.v+')');
+        }
+      } else {
+        diag.lastPull = {time: Date.now(), ok:true, foundData:false};
+      }
+    } catch(err){
+      diag.lastPull = {time: Date.now(), ok:false, error: (err && err.message) ? err.message : String(err)};
+    } finally {
+      syncing = false;
+    }
+    renderDiagnostics();
+  }
+
+  function setSyncStatus(msg){
+    const el = document.getElementById('syncStatus');
+    if(el) el.textContent = msg + ' (tap for sync info)';
+  }
+
+  function fmtTime(ts){
+    if(!ts) return '—';
+    const d = new Date(ts);
+    return d.toLocaleTimeString();
+  }
+
+  function renderDiagnostics(){
+    const panel = document.getElementById('syncDiagnosticsBody');
+    if(!panel || !diagnosticsOpen) return;
+    const lines = [];
+    lines.push(`<span class="label">Backend:</span> /api/state (Redis-backed)`);
+    lines.push(`<span class="label">Pushes sent:</span> ${diag.pushCount}   <span class="label">Pulls attempted:</span> ${diag.pullCount}`);
+    lines.push('');
+    lines.push(`<span class="label">Last push (${fmtTime(diag.lastPush && diag.lastPush.time)}):</span>`);
+    if(diag.lastPush){
+      if(diag.lastPush.ok){
+        lines.push(`  <span class="ok">OK</span> — pushed version ${diag.lastPush.version}`);
+      } else {
+        lines.push(`  <span class="bad">FAILED</span> — ${diag.lastPush.error}`);
+      }
+    } else {
+      lines.push('  (none yet)');
+    }
+    lines.push('');
+    lines.push(`<span class="label">Last pull (${fmtTime(diag.lastPull && diag.lastPull.time)}):</span>`);
+    if(diag.lastPull){
+      if(diag.lastPull.ok){
+        if(diag.lastPull.foundData){
+          lines.push(`  <span class="ok">OK</span> — found remote v${diag.lastPull.remoteVersion}, local v${diag.lastPull.localVersion}, adopted: ${diag.lastPull.adopted}`);
+        } else {
+          lines.push(`  <span class="ok">OK</span> — but no data found at this key yet`);
+        }
+      } else {
+        lines.push(`  <span class="bad">FAILED</span> — ${diag.lastPull.error}`);
+      }
+    } else {
+      lines.push('  (none yet)');
+    }
+    lines.push('');
+    lines.push(`<span class="label">Raw last pull value:</span> ${diag.lastPullRaw || '—'}`);
+    lines.push('');
+    lines.push(`<span class="label">Local version pointer:</span> ${lastKnownRemoteVersion}`);
+    panel.innerHTML = lines.join('\n');
+  }
+
+  document.getElementById('syncStatus').addEventListener('click', ()=>{
+    diagnosticsOpen = !diagnosticsOpen;
+    const panel = document.getElementById('syncDiagnostics');
+    if(panel){
+      panel.style.display = diagnosticsOpen ? 'block' : 'none';
+      if(diagnosticsOpen) renderDiagnostics();
+    }
+  });
+
+  document.getElementById('signOutLink').addEventListener('click', async (e)=>{
+    e.preventDefault();
+    try{ await fetch('/api/logout', {method:'POST'}); } catch(err){ /* clear client-side regardless */ }
+    window.location.href = '/login.html';
+  });
+
+  // Poll for remote updates periodically and whenever the tab regains focus.
+  setInterval(pullState, 1500);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pullState(); });
+  window.addEventListener('focus', pullState);
+
+  buildPad();
+  buildSuitPad();
+  updateYourSeatOptions();
+  initShoe();
+  pullState(); // adopt any existing shared table state on load
+  switchView('home');
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/sw.js').catch(()=>{ /* offline shell just won't be available; app still works online */ });
+  });
+}
+</script>
+
+</body>
+</html>

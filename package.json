@@ -1,0 +1,9 @@
+{
+  "name": "table-sense-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Table Sense blackjack counter — password-gated PWA with cross-device sync.",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}
