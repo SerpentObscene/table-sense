@@ -1096,7 +1096,7 @@
     if(id==='player') return 'player';
     return 'seat';
   }
-  const SEAT_PALETTE = ['#8fae7f','#c97fae','#7fa8c9','#c9975a','#a389d4','#5fbfa0'];
+  const SEAT_PALETTE = ['#8fae7f','#c97fae','#7fa8c9','#c9975a','#a389d4','#5fbfa0','#b8c95a'];
   function handColor(id){
     if(id==='dealer') return '#6B9FC0';
     if(id==='player') return '#c9a15a';
@@ -1386,7 +1386,7 @@
         if(id === 'dealer' && !readOnly){
           // "+" to add a seat sits right before the dealer, in the editable views only.
           const addTab = document.createElement('div');
-          const atMax = (otherPlayerCount >= 6);
+          const atMax = (otherPlayerCount >= 7);
           addTab.className = 'hand-tab is-add-tab' + (atMax ? ' disabled' : '');
           addTab.textContent = '+';
           addTab.title = 'Add a seat';
