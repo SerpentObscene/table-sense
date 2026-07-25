@@ -105,7 +105,7 @@
   .sync-diagnostics .bad{color:var(--red-dark);}
   .sync-diagnostics .label{color:var(--ink-soft); text-transform:uppercase; font-weight:700; letter-spacing:0.04em;}
 
-  .wrap{max-width:640px; margin:0 auto; padding:14px 14px 0;}
+  .wrap{max-width:640px; margin:0 auto; padding:14px 14px 0; position:relative;}
 
   /* Count tray — the signature "scoreboard" element */
   .tray{
@@ -743,6 +743,45 @@
 
     #view-stats footer{ display:none; } /* no room, and nothing scrolls to reveal it anyway */
   }
+
+  /* ===== Fullscreen monitoring mode ===== */
+  .fullscreen-btn{
+    position:absolute;
+    top:clamp(8px, 1vw, 16px);
+    right:clamp(8px, 1vw, 16px);
+    z-index:10;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-bottom:3px solid var(--line);
+    border-radius:11px;
+    padding:8px 12px;
+    color:var(--ink-soft);
+    font-family:var(--body);
+    font-weight:700;
+    font-size:0.72rem;
+    cursor:pointer;
+  }
+  .fullscreen-btn:active{transform:translateY(1px);}
+  .fullscreen-btn:hover{color:var(--ink); border-color:var(--green);}
+  #fullscreenBtnIcon{font-size:0.95rem; line-height:1;}
+
+  /* When actually in the browser's Fullscreen API mode: strip every bit of chrome
+     so the dashboard is the only thing on screen — a true dedicated monitor view. */
+  body.is-fullscreen .rail{ display:none; }
+  body.is-fullscreen .bottom-nav{ display:none; }
+  body.is-fullscreen{ padding-bottom:0; }
+  body.is-fullscreen #view-stats.view{
+    padding-top:clamp(10px, 1.4vw, 22px);
+  }
+  body.is-fullscreen #view-stats .stats-dashboard{
+    height: calc(100dvh - 24px); /* just breathing room, no rail/nav to account for */
+  }
+  body.is-fullscreen .fullscreen-btn{
+    background:rgba(35,35,41,0.85);
+  }
 </style>
 </head>
 <body>
@@ -922,6 +961,9 @@
 
 <!-- ============ STATS VIEW (visual overview for a second screen) ============ -->
 <div class="wrap view" id="view-stats" style="display:none;">
+  <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle fullscreen monitoring mode">
+    <span id="fullscreenBtnIcon">⛶</span><span id="fullscreenBtnLabel">Fullscreen</span>
+  </button>
   <div class="stats-dashboard">
 
     <div class="stats-col stats-col-left">
@@ -2189,10 +2231,38 @@
     document.querySelectorAll('.nav-btn').forEach(btn=>{
       btn.classList.toggle('active', btn.dataset.view===view);
     });
+    // Fullscreen monitoring mode only makes sense on the Stats view — drop out of it
+    // automatically if the user switches away while it's active.
+    if(view !== 'stats' && document.fullscreenElement){
+      document.exitFullscreen().catch(()=>{});
+    }
   }
   document.querySelectorAll('.nav-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>switchView(btn.dataset.view));
   });
+
+  // ---------- Fullscreen monitoring mode ----------
+  function isFullscreen(){ return !!document.fullscreenElement; }
+  function updateFullscreenBtn(){
+    const icon = document.getElementById('fullscreenBtnIcon');
+    const label = document.getElementById('fullscreenBtnLabel');
+    const fs = isFullscreen();
+    document.body.classList.toggle('is-fullscreen', fs);
+    if(icon) icon.textContent = fs ? '⤢' : '⛶';
+    if(label) label.textContent = fs ? 'Exit fullscreen' : 'Fullscreen';
+  }
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
+  if(fullscreenBtn){
+    fullscreenBtn.addEventListener('click', ()=>{
+      if(!isFullscreen()){
+        document.documentElement.requestFullscreen().catch(()=>{});
+      } else {
+        document.exitFullscreen().catch(()=>{});
+      }
+    });
+  }
+  // Keep the button/label correct even if the user exits via Esc or the browser's own UI.
+  document.addEventListener('fullscreenchange', updateFullscreenBtn);
 
   // ---------- Cross-device sync via a real backend (/api/state, Redis-backed) ----------
   const lastPushedVersionKey = 'lastPushedVersion';
