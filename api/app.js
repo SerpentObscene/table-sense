@@ -5,7 +5,7 @@ const { isAuthenticated } = require('./_auth');
 let cachedHtml = null;
 function getHtml() {
   if (!cachedHtml) {
-    cachedHtml = fs.readFileSync(path.join(__dirname, 'app.html'), 'utf8');
+    cachedHtml = fs.readFileSync(path.join(__dirname, '..', 'templates', 'app.html'), 'utf8');
   }
   return cachedHtml;
 }

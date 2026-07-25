@@ -4,7 +4,7 @@
   ],
   "functions": {
     "api/app.js": {
-      "includeFiles": "api/app.html"
+      "includeFiles": "templates/app.html"
     }
   },
   "headers": [
