@@ -654,52 +654,93 @@
   .stats-dashboard{ display:block; }
   .stats-col + .stats-col{ margin-top:20px; }
 
-  /* ===== Wide screen (computer monitor): true no-scroll dashboard ===== */
+  /* ===== Wide screen (computer monitor): true no-scroll dashboard, using full width/height ===== */
   @media (min-width: 900px){
     body{ padding-bottom:0; }
     #view-stats.view{
-      max-width:1400px;
+      max-width:none;
+      width:100%;
+      padding-left:clamp(14px, 2vw, 36px);
+      padding-right:clamp(14px, 2vw, 36px);
     }
     #view-stats .stats-dashboard{
       display:grid;
       grid-template-columns: 1fr 1.3fr 1fr;
-      gap:16px;
-      align-items:start;
-      height: calc(100dvh - 160px); /* rail + bottom nav + wrap padding */
+      gap:clamp(16px, 1.8vw, 34px);
+      align-items:stretch;
+      height: calc(100dvh - 150px); /* rail + bottom nav + wrap padding */
       overflow:hidden;
     }
     #view-stats .stats-col{
       height:100%;
+      min-height:0;
       overflow:hidden;
       display:flex;
       flex-direction:column;
     }
     #view-stats .stats-col + .stats-col{ margin-top:0; }
-    #view-stats .section-title{ font-size:0.74rem; margin-bottom:6px; }
-    #view-stats .stats-hero-val{ font-size:1.6rem; }
-    #view-stats .stats-hero-cell.accent .stats-hero-val{ font-size:1.85rem; }
-    #view-stats .stats-hero-cell{ padding:10px 6px; }
-    #view-stats .advice{ font-size:0.76rem; padding:9px 11px; }
-    #view-stats .hot-shoe-alert, #view-stats .insurance-alert{ font-size:0.72rem; padding:9px 11px; }
-    #view-stats .insurance-alert .title{ font-size:0.8rem; }
-    #view-stats .stats-card{ padding:9px 11px; }
-    #view-stats .stats-card-val{ font-size:1.1rem; }
-    #view-stats .stats-grid{ gap:7px; }
-    #view-stats .hand-tabs.stats-hands{ gap:6px; }
-    #view-stats .hand-tab{ min-width:88px; padding:7px 9px 8px; }
-    #view-stats .hand-tab .total-num{ font-size:1.35rem; }
+
+    /* A block that grows to absorb whatever vertical space is left in its column,
+       instead of shrink-wrapping its content and leaving dead space below it. */
+    #view-stats .stats-fill{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      margin-top:clamp(10px, 1.4vw, 22px);
+    }
+    #view-stats .stats-fill-panels{
+      gap:clamp(10px, 1.4vw, 22px);
+    }
+    #view-stats .stats-fill-panels .side-panel{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+    }
+
+    #view-stats .section-title{ font-size:clamp(0.8rem, 1vw, 1.05rem); margin-bottom:clamp(6px, 0.8vw, 12px); }
+
+    #view-stats .stats-hero{ gap:clamp(8px, 1vw, 16px); }
+    #view-stats .stats-hero-cell{ padding:clamp(12px, 1.6vw, 26px) clamp(6px, 1vw, 14px); }
+    #view-stats .stats-hero-label{ font-size:clamp(0.6rem, 0.75vw, 0.8rem); }
+    #view-stats .stats-hero-val{ font-size:clamp(1.8rem, 2.7vw, 3.2rem); }
+    #view-stats .stats-hero-cell.accent .stats-hero-val{ font-size:clamp(2.1rem, 3.1vw, 3.7rem); }
+
+    #view-stats .advice{ font-size:clamp(0.78rem, 0.95vw, 1rem); padding:clamp(10px, 1.3vw, 18px) clamp(12px, 1.5vw, 20px); }
+    #view-stats .hot-shoe-alert, #view-stats .insurance-alert{ font-size:clamp(0.74rem, 0.9vw, 0.95rem); padding:clamp(10px, 1.3vw, 18px) clamp(12px, 1.5vw, 20px); }
+    #view-stats .insurance-alert .title{ font-size:clamp(0.82rem, 1vw, 1.05rem); }
+
+    #view-stats .stats-grid{ gap:clamp(8px, 1.1vw, 18px); grid-auto-rows:1fr; }
+    #view-stats .stats-card{ padding:clamp(12px, 1.6vw, 26px); display:flex; flex-direction:column; justify-content:center; }
+    #view-stats .stats-card-label{ font-size:clamp(0.68rem, 0.85vw, 0.9rem); }
+    #view-stats .stats-card-val{ font-size:clamp(1.3rem, 2vw, 2.4rem); }
+
+    #view-stats .hand-tabs.stats-hands{ gap:clamp(6px, 0.9vw, 14px); }
+    #view-stats .hand-tab{ min-width:clamp(88px, 9vw, 140px); padding:clamp(8px, 1vw, 16px) clamp(9px, 1.1vw, 18px) clamp(9px, 1.1vw, 18px); }
+    #view-stats .hand-tab .who{ font-size:clamp(0.62rem, 0.75vw, 0.78rem); }
+    #view-stats .hand-tab .total-num{ font-size:clamp(1.35rem, 2vw, 2.5rem); }
+    #view-stats .hand-tab .cards{ font-size:clamp(0.8rem, 1vw, 1.05rem); }
+
     #view-stats .odds-grid{
       grid-template-columns: repeat(4, 1fr);
-      gap:6px;
+      grid-auto-rows: 1fr;
+      align-content:stretch;
+      gap:clamp(6px, 0.9vw, 14px);
       flex:1;
       overflow:hidden;
+      margin-top:clamp(8px, 1vw, 16px);
     }
-    #view-stats .odds-cell{ padding:6px 3px; }
-    #view-stats .odds-cell .pct{ font-size:0.64rem; }
-    #view-stats .odds-cell .cnt{ font-size:0.5rem; }
-    #view-stats .side-panel{ padding:9px 11px; }
-    #view-stats .side-panel .title{ font-size:0.72rem; margin-bottom:5px; }
-    #view-stats .side-panel .line{ padding:2px 0; font-size:0.76rem; }
+    #view-stats .odds-cell{ padding:clamp(6px, 1vw, 16px) clamp(3px, 0.6vw, 10px); display:flex; flex-direction:column; justify-content:center; }
+    #view-stats .odds-cell .rank{ font-size:clamp(0.9rem, 1.3vw, 1.4rem); }
+    #view-stats .odds-cell .pct{ font-size:clamp(0.64rem, 0.85vw, 0.9rem); }
+    #view-stats .odds-cell .cnt{ font-size:clamp(0.5rem, 0.65vw, 0.7rem); }
+
+    #view-stats .side-panel{ padding:clamp(12px, 1.6vw, 26px); }
+    #view-stats .side-panel .title{ font-size:clamp(0.76rem, 0.95vw, 1rem); margin-bottom:clamp(5px, 0.8vw, 12px); }
+    #view-stats .side-panel .line{ padding:clamp(3px, 0.5vw, 8px) 0; font-size:clamp(0.8rem, 1.05vw, 1.15rem); }
+
     #view-stats footer{ display:none; } /* no room, and nothing scrolls to reveal it anyway */
   }
 </style>
@@ -904,23 +945,25 @@
       <div class="hot-shoe-alert" id="hotShoeAlertStats" style="display:none;"></div>
       <div class="insurance-alert" id="insuranceAlertStats" style="display:none;"></div>
 
-      <div class="stats-grid" style="margin-top:10px;">
-        <div class="stats-card">
-          <div class="stats-card-label">P(10‑value)</div>
-          <div class="stats-card-val" id="statPTen">—</div>
-        </div>
-        <div class="stats-card">
-          <div class="stats-card-label">P(Ace)</div>
-          <div class="stats-card-val" id="statPAce">—</div>
-        </div>
-        <div class="stats-card wide">
-          <div class="stats-card-label">P(dealer busts)</div>
-          <div class="stats-card-val" id="statPBust">—</div>
-        </div>
-        <div class="stats-card wide" id="statMyBustCard" style="display:none;">
-          <div class="stats-card-label">P(you bust if you hit)</div>
-          <div class="stats-card-val" id="statMyBust">—</div>
-          <div class="bust-meter-track" style="margin-top:8px;"><div class="bust-meter-fill" id="statMyBustFill" style="width:0%;"></div></div>
+      <div class="stats-fill">
+        <div class="stats-grid">
+          <div class="stats-card">
+            <div class="stats-card-label">P(10‑value)</div>
+            <div class="stats-card-val" id="statPTen">—</div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-card-label">P(Ace)</div>
+            <div class="stats-card-val" id="statPAce">—</div>
+          </div>
+          <div class="stats-card wide">
+            <div class="stats-card-label">P(dealer busts)</div>
+            <div class="stats-card-val" id="statPBust">—</div>
+          </div>
+          <div class="stats-card wide" id="statMyBustCard" style="display:none;">
+            <div class="stats-card-label">P(you bust if you hit)</div>
+            <div class="stats-card-val" id="statMyBust">—</div>
+            <div class="bust-meter-track" style="margin-top:8px;"><div class="bust-meter-fill" id="statMyBustFill" style="width:0%;"></div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -935,21 +978,23 @@
 
     <div class="stats-col stats-col-right">
       <div class="section-title">Side bets</div>
-      <div class="side-panel">
-        <div class="title">Perfect Pairs</div>
-        <div class="line"><span>Perfect</span><span class="p" id="statPpPerfect">—</span></div>
-        <div class="line"><span>Colored</span><span class="p" id="statPpColored">—</span></div>
-        <div class="line"><span>Mixed</span><span class="p" id="statPpMixed">—</span></div>
-        <div class="line"><span>Any pair</span><span class="p" id="statPpAny">—</span></div>
-      </div>
-      <div class="side-panel" style="margin-top:10px;">
-        <div class="title">21+1</div>
-        <div class="line"><span>Suited trips</span><span class="p" id="statTpSuitedTrips">—</span></div>
-        <div class="line"><span>Straight flush</span><span class="p" id="statTpStraightFlush">—</span></div>
-        <div class="line"><span>Three of a kind</span><span class="p" id="statTpTrips">—</span></div>
-        <div class="line"><span>Straight</span><span class="p" id="statTpStraight">—</span></div>
-        <div class="line"><span>Flush</span><span class="p" id="statTpFlush">—</span></div>
-        <div class="line"><span>Any win</span><span class="p" id="statTpAny">—</span></div>
+      <div class="stats-fill stats-fill-panels">
+        <div class="side-panel">
+          <div class="title">Perfect Pairs</div>
+          <div class="line"><span>Perfect</span><span class="p" id="statPpPerfect">—</span></div>
+          <div class="line"><span>Colored</span><span class="p" id="statPpColored">—</span></div>
+          <div class="line"><span>Mixed</span><span class="p" id="statPpMixed">—</span></div>
+          <div class="line"><span>Any pair</span><span class="p" id="statPpAny">—</span></div>
+        </div>
+        <div class="side-panel">
+          <div class="title">21+1</div>
+          <div class="line"><span>Suited trips</span><span class="p" id="statTpSuitedTrips">—</span></div>
+          <div class="line"><span>Straight flush</span><span class="p" id="statTpStraightFlush">—</span></div>
+          <div class="line"><span>Three of a kind</span><span class="p" id="statTpTrips">—</span></div>
+          <div class="line"><span>Straight</span><span class="p" id="statTpStraight">—</span></div>
+          <div class="line"><span>Flush</span><span class="p" id="statTpFlush">—</span></div>
+          <div class="line"><span>Any win</span><span class="p" id="statTpAny">—</span></div>
+        </div>
       </div>
     </div>
 

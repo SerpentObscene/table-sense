@@ -4,7 +4,7 @@
 const crypto = require('crypto');
 
 const COOKIE_NAME = 'ts_auth';
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
+const MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 year — effectively "log in once"
 
 function getSecret() {
   const secret = process.env.SESSION_SECRET;
