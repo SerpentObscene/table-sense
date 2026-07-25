@@ -2264,28 +2264,28 @@
   // Keep the button/label correct even if the user exits via Esc or the browser's own UI.
   document.addEventListener('fullscreenchange', updateFullscreenBtn);
 
-  // ---------- Cross-device sync via a real backend (/api/state, Redis-backed) ----------
-  const lastPushedVersionKey = 'lastPushedVersion';
-  let lastPushedVersion = 0;
-  let lastKnownRemoteVersion = 0;
+  // ---------- Cross-device sync via a real backend (/api/state, Supabase-backed) ----------
+  // The server's own write timestamp is the sole authority for "what's newest" — never a
+  // client-generated counter. Two devices each counting their own pushes from 0 will both
+  // independently reach "version 2", "version 3", etc — those numbers collide across devices
+  // even though they refer to completely different states. A server timestamp can't collide.
+  let lastKnownRemoteTimestamp = null; // ISO string, or null if nothing adopted yet
   let syncing = false;
   let diagnosticsOpen = false;
 
   // Running log of exactly what's happened, for the diagnostics panel.
   const diag = {
     pushCount: 0, pullCount: 0,
-    lastPush: null,  // {time, ok, version, error}
-    lastPull: null,  // {time, ok, foundData, remoteVersion, adopted, error}
+    lastPush: null,  // {time, ok, updatedAt, error}
+    lastPull: null,  // {time, ok, foundData, remoteUpdatedAt, localTimestamp, adopted, error}
     lastPullRaw: null
   };
 
   function serializeState(){
     return {
-      v: ++lastPushedVersion,
       deckCount, otherPlayerCount, yourSeatPosition,
       seen, counts, hands, handOrder, activeHand,
-      dealerHoleRevealed, holeRevealArmed, selectedUpcard21,
-      ts: Date.now()
+      dealerHoleRevealed, holeRevealArmed, selectedUpcard21
     };
   }
 
@@ -2301,7 +2301,6 @@
     dealerHoleRevealed = s.dealerHoleRevealed;
     holeRevealArmed = s.holeRevealArmed;
     selectedUpcard21 = s.selectedUpcard21;
-    lastKnownRemoteVersion = s.v;
     // reflect deck/seat controls in the UI
     const dc = document.getElementById('deckCount'); if(dc) dc.value = String(deckCount);
     const op = document.getElementById('otherPlayers'); if(op) op.value = String(otherPlayerCount);
@@ -2332,9 +2331,12 @@
         renderDiagnostics();
         return;
       }
-      lastKnownRemoteVersion = state.v;
-      diag.lastPush = {time: Date.now(), ok:true, version: state.v};
-      setSyncStatus('Synced just now (v'+state.v+')');
+      const body = await res.json();
+      // The server hands back the exact timestamp it just wrote — record it so this
+      // device doesn't turn around and needlessly re-adopt its own push on the next pull.
+      if(body && body.updatedAt) lastKnownRemoteTimestamp = body.updatedAt;
+      diag.lastPush = {time: Date.now(), ok:true, updatedAt: body && body.updatedAt};
+      setSyncStatus('Synced just now');
     } catch(err){
       diag.lastPush = {time: Date.now(), ok:false, error: (err && err.message) ? err.message : String(err)};
       setSyncStatus('Push failed — tap for details');
@@ -2365,12 +2367,14 @@
       const hasValue = !!(body && body.value);
       diag.lastPullRaw = hasValue ? (body.value.length+' chars, starts: '+body.value.slice(0,40)) : '(no value stored yet)';
       if(hasValue){
-        const remote = JSON.parse(body.value);
-        const willAdopt = !!(remote.v && remote.v > lastKnownRemoteVersion);
-        diag.lastPull = {time: Date.now(), ok:true, foundData:true, remoteVersion: remote.v, localVersion: lastKnownRemoteVersion, adopted: willAdopt};
+        const remoteUpdatedAt = body.updatedAt;
+        const willAdopt = !!remoteUpdatedAt && (!lastKnownRemoteTimestamp || new Date(remoteUpdatedAt) > new Date(lastKnownRemoteTimestamp));
+        diag.lastPull = {time: Date.now(), ok:true, foundData:true, remoteUpdatedAt, localTimestamp: lastKnownRemoteTimestamp, adopted: willAdopt};
         if(willAdopt){
+          const remote = JSON.parse(body.value);
           applyState(remote);
-          setSyncStatus('Updated from another device (v'+remote.v+')');
+          lastKnownRemoteTimestamp = remoteUpdatedAt;
+          setSyncStatus('Updated from another device');
         }
       } else {
         diag.lastPull = {time: Date.now(), ok:true, foundData:false};
@@ -2398,13 +2402,13 @@
     const panel = document.getElementById('syncDiagnosticsBody');
     if(!panel || !diagnosticsOpen) return;
     const lines = [];
-    lines.push(`<span class="label">Backend:</span> /api/state (Redis-backed)`);
+    lines.push(`<span class="label">Backend:</span> /api/state (Supabase-backed)`);
     lines.push(`<span class="label">Pushes sent:</span> ${diag.pushCount}   <span class="label">Pulls attempted:</span> ${diag.pullCount}`);
     lines.push('');
     lines.push(`<span class="label">Last push (${fmtTime(diag.lastPush && diag.lastPush.time)}):</span>`);
     if(diag.lastPush){
       if(diag.lastPush.ok){
-        lines.push(`  <span class="ok">OK</span> — pushed version ${diag.lastPush.version}`);
+        lines.push(`  <span class="ok">OK</span> — server recorded it at ${diag.lastPush.updatedAt || '—'}`);
       } else {
         lines.push(`  <span class="bad">FAILED</span> — ${diag.lastPush.error}`);
       }
@@ -2416,7 +2420,7 @@
     if(diag.lastPull){
       if(diag.lastPull.ok){
         if(diag.lastPull.foundData){
-          lines.push(`  <span class="ok">OK</span> — found remote v${diag.lastPull.remoteVersion}, local v${diag.lastPull.localVersion}, adopted: ${diag.lastPull.adopted}`);
+          lines.push(`  <span class="ok">OK</span> — remote updated ${diag.lastPull.remoteUpdatedAt}, we last knew ${diag.lastPull.localTimestamp || '(nothing yet)'}, adopted: ${diag.lastPull.adopted}`);
         } else {
           lines.push(`  <span class="ok">OK</span> — but no data found at this key yet`);
         }
@@ -2429,7 +2433,7 @@
     lines.push('');
     lines.push(`<span class="label">Raw last pull value:</span> ${diag.lastPullRaw || '—'}`);
     lines.push('');
-    lines.push(`<span class="label">Local version pointer:</span> ${lastKnownRemoteVersion}`);
+    lines.push(`<span class="label">Last known synced timestamp:</span> ${lastKnownRemoteTimestamp || '(none yet)'}`);
     panel.innerHTML = lines.join('\n');
   }
 
