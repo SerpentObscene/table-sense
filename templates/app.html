@@ -225,117 +225,6 @@
     border-radius:10px; padding:6px 10px; font-family:var(--body); font-weight:700; font-size:0.85rem;
   }
 
-  /* Player count stepper */
-  .stepper{ display:flex; align-items:center; gap:12px; }
-  .stepper button{
-    width:34px; height:34px;
-    border-radius:10px;
-    border:2px solid var(--line);
-    border-bottom:3px solid var(--line);
-    background:var(--panel-2);
-    color:var(--ink);
-    font-family:var(--display);
-    font-size:1.2rem;
-    font-weight:800;
-    line-height:1;
-    cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .stepper button:active{transform:translateY(1px); border-bottom-width:2px;}
-  .stepper button:disabled{opacity:0.35; cursor:default;}
-  .stepper span{
-    font-family:var(--display); font-weight:800; font-size:1.1rem; color:var(--ink);
-    min-width:1.2em; text-align:center;
-  }
-
-  /* Drag-to-arrange seat row */
-  .seat-arrange{
-    background:var(--panel);
-    border:2px solid var(--line);
-    border-bottom:4px solid var(--line);
-    border-radius:14px;
-    padding:12px 14px;
-    margin-bottom:10px;
-  }
-  .seat-arrange-label{
-    font-family:var(--body); font-weight:700; font-size:0.72rem; letter-spacing:0.03em;
-    text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px;
-  }
-  .seat-row{
-    display:flex; align-items:center; gap:8px;
-    overflow-x:auto;
-    padding-bottom:2px;
-    -webkit-overflow-scrolling:touch;
-    touch-action:pan-y;
-  }
-  .seat-chip{
-    flex:0 0 auto;
-    min-width:64px;
-    padding:10px 8px;
-    border-radius:12px;
-    border:2px solid var(--line);
-    background:var(--panel-2);
-    text-align:center;
-    font-family:var(--body); font-weight:800; font-size:0.72rem;
-    color:var(--ink-soft);
-    user-select:none;
-    -webkit-user-select:none;
-    touch-action:none;
-    cursor:grab;
-    transition:transform 0.15s ease, box-shadow 0.15s ease;
-    position:relative;
-  }
-  .seat-chip .chip-icon{ display:block; font-size:0.95rem; margin-bottom:2px; opacity:0.6; }
-  .seat-chip:not(.is-you){ cursor:default; touch-action:auto; }
-  .seat-chip.is-you{
-    background:var(--gold-bg);
-    border-color:var(--gold);
-    color:var(--gold-dark);
-  }
-  .seat-chip.is-you .chip-icon{ opacity:1; }
-  .seat-chip.is-dealer{
-    background:var(--blue-bg);
-    border-color:var(--blue);
-    color:var(--blue-dark);
-    cursor:default;
-    opacity:0.85;
-  }
-  .seat-chip.dragging{
-    box-shadow:0 6px 18px rgba(0,0,0,0.4);
-    z-index:5;
-    cursor:grabbing;
-  }
-  .seat-chip .chip-remove{
-    position:absolute;
-    top:-6px; right:-6px;
-    width:18px; height:18px;
-    border-radius:50%;
-    background:var(--red);
-    color:#3D1616;
-    font-size:0.6rem;
-    font-weight:800;
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer;
-    border:2px solid var(--panel);
-  }
-  .seat-chip.is-add{
-    background:var(--green-bg);
-    border-color:var(--green);
-    color:var(--green-dark);
-    font-family:var(--display);
-    font-size:1.4rem;
-    font-weight:800;
-    cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-    min-height:58px;
-  }
-  .seat-chip.is-add:active{ transform:scale(0.94); }
-  .seat-arrow{
-    color:var(--ink-soft);
-    font-size:0.9rem;
-    flex:0 0 auto;
-  }
-
   /* Hand tabs: Dealer / Player / Seats */
   .hand-tabs{
     display:flex;
@@ -417,6 +306,26 @@
     color:var(--ink-soft); font-size:0.8rem; cursor:pointer; font-weight:800;
     padding:0 2px;
   }
+  .hand-tab.player{ cursor:grab; touch-action:none; position:relative; }
+  .hand-tab.player:active{ cursor:grabbing; }
+  .hand-tab.dragging{
+    box-shadow:0 8px 20px rgba(0,0,0,0.4);
+    z-index:5;
+    cursor:grabbing;
+  }
+  .hand-tab.is-add-tab{
+    display:flex; align-items:center; justify-content:center;
+    min-width:52px;
+    font-family:var(--display); font-size:1.5rem; font-weight:800;
+    color:var(--green-dark);
+    background:var(--green-bg);
+    border-color:var(--green);
+    cursor:pointer;
+  }
+  .hand-tab.is-add-tab.disabled{
+    opacity:0.35; cursor:default;
+  }
+  .hand-tab.is-add-tab:active{ transform:scale(0.94); }
 
   .reveal-btn{
     width:100%;
@@ -920,11 +829,6 @@
     </select>
   </div>
 
-  <div class="seat-arrange" id="seatArrangeControl">
-    <div class="seat-arrange-label">Table seats — drag YOU to arrange, ✕ to remove, + to add</div>
-    <div class="seat-row" id="seatRow"></div>
-  </div>
-
   <!-- Count tray -->
   <div class="tray">
     <div class="cell">
@@ -1237,160 +1141,6 @@
     seen = seen.filter(s=> s.who !== id);
   }
 
-  // Renders the unified seat row: one chip per player seat (one is "YOU", draggable),
-  // each non-YOU seat gets a ✕ to remove it, a "+" chip to add another, then a fixed
-  // dealer chip at the end. This is the single control for table size AND seating order.
-  function renderSeatRow(){
-    const row = document.getElementById('seatRow');
-    if(!row) return;
-    const totalPlayerSeats = otherPlayerCount + 1;
-    yourSeatPosition = Math.max(1, Math.min(yourSeatPosition, totalPlayerSeats));
-
-    row.innerHTML = '';
-    for(let i=1;i<=totalPlayerSeats;i++){
-      const isYou = (i === yourSeatPosition);
-      const chip = document.createElement('div');
-      chip.className = 'seat-chip' + (isYou ? ' is-you' : '');
-      if(isYou){
-        chip.innerHTML = '<span class="chip-icon">●</span>YOU';
-        attachSeatDragHandlers(chip);
-      } else {
-        chip.innerHTML = '<span class="chip-icon">○</span>Seat<span class="chip-remove" data-seat-index="'+i+'">✕</span>';
-      }
-      row.appendChild(chip);
-    }
-
-    if(otherPlayerCount < 6){
-      const addChip = document.createElement('div');
-      addChip.className = 'seat-chip is-add';
-      addChip.id = 'addSeatChip';
-      addChip.textContent = '+';
-      row.appendChild(addChip);
-    }
-
-    const arrow = document.createElement('span');
-    arrow.className = 'seat-arrow';
-    arrow.textContent = '→';
-    row.appendChild(arrow);
-    const dealerChip = document.createElement('div');
-    dealerChip.className = 'seat-chip is-dealer';
-    dealerChip.innerHTML = '<span class="chip-icon">♠</span>Dealer';
-    row.appendChild(dealerChip);
-
-    // Wire up this render's ✕ buttons and + chip (rebuilt fresh every render, so no
-    // stale-listener buildup — old elements and their listeners are simply discarded).
-    row.querySelectorAll('.chip-remove').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        const seatIndex = parseInt(btn.dataset.seatIndex, 10);
-        // If the removed seat sat visually before YOU, YOU shifts down one slot to
-        // keep your real position relative to the others who are actually still there.
-        if(seatIndex < yourSeatPosition){
-          yourSeatPosition = Math.max(1, yourSeatPosition - 1);
-        }
-        otherPlayerCount = Math.max(0, otherPlayerCount - 1);
-        renderSeatRow();
-        rebuildHandOrder();
-        buildTabs();
-        render();
-        pushState();
-      });
-    });
-    const addChipEl = document.getElementById('addSeatChip');
-    if(addChipEl){
-      addChipEl.addEventListener('click', ()=>{
-        if(otherPlayerCount >= 6) return;
-        otherPlayerCount++;
-        renderSeatRow();
-        rebuildHandOrder();
-        buildTabs();
-        render();
-        pushState();
-      });
-    }
-  }
-
-  function getSeatChips(){
-    return Array.from(document.querySelectorAll('#seatRow .seat-chip:not(.is-dealer)'));
-  }
-
-  function attachSeatDragHandlers(chip){
-    let dragging = false;
-    let startX = 0;
-    // Other chips' positions are captured ONCE at drag start and never re-queried mid-drag.
-    // Comparing the pointer against live (reflow-affected) sibling rects during an active
-    // drag is fragile — moving the dragged chip changes its siblings' flex layout position
-    // too, which can make an incremental "did we cross this edge" check misfire depending
-    // on how the drag happens to be sampled. Fixed reference points sidestep that entirely.
-    let originalOtherChips = [];
-    let originalSlotCenters = [];
-
-    function onPointerDown(e){
-      e.preventDefault();
-      dragging = true;
-      chip.setPointerCapture(e.pointerId);
-      chip.classList.add('dragging');
-      startX = e.clientX;
-
-      const chips = getSeatChips();
-      originalOtherChips = chips.filter(c => c !== chip);
-      originalSlotCenters = originalOtherChips.map(c => {
-        const r = c.getBoundingClientRect();
-        return r.left + r.width/2;
-      });
-
-      document.addEventListener('pointermove', onPointerMove);
-      document.addEventListener('pointerup', onPointerUp);
-    }
-
-    function onPointerMove(e){
-      if(!dragging) return;
-      const dx = e.clientX - startX;
-      chip.style.transform = 'translateX('+dx+'px)';
-
-      // How many of the original (fixed) sibling centers sit to the left of the pointer
-      // tells us exactly which slot the dragged chip should currently occupy.
-      let targetIndex = 0;
-      for(const centerX of originalSlotCenters){
-        if(e.clientX > centerX) targetIndex++;
-      }
-
-      const row = document.getElementById('seatRow');
-      const referenceChip = originalOtherChips[targetIndex];
-      if(referenceChip){
-        if(chip.nextSibling !== referenceChip && chip !== referenceChip){
-          row.insertBefore(chip, referenceChip);
-        }
-      } else {
-        // Past the last original sibling — belongs at the end of the reorderable group.
-        const lastOther = originalOtherChips[originalOtherChips.length-1];
-        if(lastOther && chip.previousSibling !== lastOther){
-          row.insertBefore(chip, lastOther.nextSibling);
-        }
-      }
-    }
-
-    function onPointerUp(e){
-      if(!dragging) return;
-      dragging = false;
-      chip.releasePointerCapture(e.pointerId);
-      chip.classList.remove('dragging');
-      chip.style.transform = '';
-      document.removeEventListener('pointermove', onPointerMove);
-      document.removeEventListener('pointerup', onPointerUp);
-
-      const chips = getSeatChips();
-      const newIndex = chips.indexOf(chip); // 0-indexed
-      yourSeatPosition = newIndex + 1;
-      renderSeatRow();
-      rebuildHandOrder();
-      buildTabs();
-      render();
-      pushState();
-    }
-
-    chip.addEventListener('pointerdown', onPointerDown);
-  }
 
   function initShoe(){
     counts = {};
@@ -1633,6 +1383,25 @@
       const readOnly = (wrapId === 'handTabsStats');
       wrap.innerHTML = '';
       handOrder.forEach(id=>{
+        if(id === 'dealer' && !readOnly){
+          // "+" to add a seat sits right before the dealer, in the editable views only.
+          const addTab = document.createElement('div');
+          const atMax = (otherPlayerCount >= 6);
+          addTab.className = 'hand-tab is-add-tab' + (atMax ? ' disabled' : '');
+          addTab.textContent = '+';
+          addTab.title = 'Add a seat';
+          if(!atMax){
+            addTab.addEventListener('click', ()=>{
+              otherPlayerCount++;
+              rebuildHandOrder();
+              buildTabs();
+              render();
+              pushState();
+            });
+          }
+          wrap.appendChild(addTab);
+        }
+
         const tab = document.createElement('div');
         tab.className = 'hand-tab '+handClass(id)+(id===activeHand?' active':'');
         tab.dataset.hand = id;
@@ -1643,6 +1412,12 @@
           <div class="cards" data-display="${id}">${handToChips(hands[id]||[])}</div>`;
         if(readOnly){
           tab.style.cursor = 'default';
+        } else if(id === 'player'){
+          attachPlayerTabDragHandlers(tab);
+          tab.querySelector('.clear-x').addEventListener('click', (e)=>{
+            e.stopPropagation();
+            clearHand(id);
+          });
         } else {
           tab.addEventListener('click', (e)=>{
             if(e.target.classList.contains('clear-x')) return;
@@ -1653,13 +1428,120 @@
           });
           tab.querySelector('.clear-x').addEventListener('click', (e)=>{
             e.stopPropagation();
-            clearHand(id);
+            if(handClass(id) === 'seat'){
+              // Seat ✕ removes the seat entirely, not just its cards — if it sat
+              // before YOU, YOU shifts down a slot to stay in the same real spot
+              // relative to whoever's actually still there.
+              const seatPos = handOrder.indexOf(id) + 1;
+              returnHandToShoe(id);
+              if(seatPos < yourSeatPosition){
+                yourSeatPosition = Math.max(1, yourSeatPosition - 1);
+              }
+              otherPlayerCount = Math.max(0, otherPlayerCount - 1);
+              rebuildHandOrder();
+              buildTabs();
+              render();
+              pushState();
+            } else {
+              clearHand(id);
+            }
           });
         }
         wrap.appendChild(tab);
       });
     });
     renderTotals();
+  }
+
+  function attachPlayerTabDragHandlers(tab){
+    let dragging = false;
+    let moved = false;
+    let startX = 0, startY = 0;
+    let originalOtherTabs = [];
+    let originalSlotCenters = [];
+    const DRAG_THRESHOLD = 6;
+
+    function beginDrag(){
+      dragging = true;
+      tab.classList.add('dragging');
+      const wrap = tab.parentElement;
+      const allTabs = Array.from(wrap.querySelectorAll('.hand-tab'));
+      originalOtherTabs = allTabs.filter(t => t !== tab && t.dataset.hand !== 'dealer' && !t.classList.contains('is-add-tab'));
+      originalSlotCenters = originalOtherTabs.map(t => {
+        const r = t.getBoundingClientRect();
+        return r.left + r.width/2;
+      });
+    }
+
+    function onPointerDown(e){
+      if(e.target.classList.contains('clear-x')) return;
+      startX = e.clientX;
+      startY = e.clientY;
+      moved = false;
+      dragging = false;
+      tab.setPointerCapture(e.pointerId);
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', onPointerUp);
+    }
+
+    function onPointerMove(e){
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if(!dragging){
+        if(Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD){
+          beginDrag();
+        } else {
+          return;
+        }
+      }
+      moved = true;
+      e.preventDefault();
+      tab.style.transform = 'translateX('+dx+'px)';
+
+      let targetIndex = 0;
+      for(const centerX of originalSlotCenters){
+        if(e.clientX > centerX) targetIndex++;
+      }
+      const wrap = tab.parentElement;
+      const referenceTab = originalOtherTabs[targetIndex];
+      if(referenceTab){
+        if(tab.nextSibling !== referenceTab && tab !== referenceTab){
+          wrap.insertBefore(tab, referenceTab);
+        }
+      } else {
+        const lastOther = originalOtherTabs[originalOtherTabs.length-1];
+        if(lastOther && tab.previousSibling !== lastOther){
+          wrap.insertBefore(tab, lastOther.nextSibling);
+        }
+      }
+    }
+
+    function onPointerUp(e){
+      tab.releasePointerCapture(e.pointerId);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+
+      if(dragging){
+        tab.classList.remove('dragging');
+        tab.style.transform = '';
+        const wrap = tab.parentElement;
+        const allTabs = Array.from(wrap.querySelectorAll('.hand-tab')).filter(t => t.dataset.hand !== 'dealer' && !t.classList.contains('is-add-tab'));
+        const newIndex = allTabs.indexOf(tab);
+        yourSeatPosition = newIndex + 1;
+        rebuildHandOrder();
+        buildTabs();
+        render();
+        pushState();
+      } else if(!moved){
+        // A plain tap with no meaningful movement — select this hand, same as any other tab.
+        activeHand = 'player';
+        renderTabs();
+        renderSuitPad();
+        pushState();
+      }
+    }
+
+    tab.addEventListener('pointerdown', onPointerDown);
   }
 
   function clearHand(id){
@@ -2520,7 +2402,6 @@
     selectedUpcard21 = s.selectedUpcard21;
     // reflect deck/seat controls in the UI
     const dc = document.getElementById('deckCount'); if(dc) dc.value = String(deckCount);
-    renderSeatRow();
     buildTabs();
     render();
   }
@@ -2675,7 +2556,6 @@
 
   buildPad();
   buildSuitPad();
-  renderSeatRow();
   initShoe();
   pullState(); // adopt any existing shared table state on load
   switchView('home');
