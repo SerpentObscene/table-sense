@@ -286,6 +286,7 @@
     position:relative;
   }
   .seat-chip .chip-icon{ display:block; font-size:0.95rem; margin-bottom:2px; opacity:0.6; }
+  .seat-chip:not(.is-you){ cursor:default; touch-action:auto; }
   .seat-chip.is-you{
     background:var(--gold-bg);
     border-color:var(--gold);
@@ -304,6 +305,31 @@
     z-index:5;
     cursor:grabbing;
   }
+  .seat-chip .chip-remove{
+    position:absolute;
+    top:-6px; right:-6px;
+    width:18px; height:18px;
+    border-radius:50%;
+    background:var(--red);
+    color:#3D1616;
+    font-size:0.6rem;
+    font-weight:800;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    border:2px solid var(--panel);
+  }
+  .seat-chip.is-add{
+    background:var(--green-bg);
+    border-color:var(--green);
+    color:var(--green-dark);
+    font-family:var(--display);
+    font-size:1.4rem;
+    font-weight:800;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    min-height:58px;
+  }
+  .seat-chip.is-add:active{ transform:scale(0.94); }
   .seat-arrow{
     color:var(--ink-soft);
     font-size:0.9rem;
@@ -894,17 +920,8 @@
     </select>
   </div>
 
-  <div class="decks-control stepper-control">
-    <label>Other players at table</label>
-    <div class="stepper">
-      <button id="removePlayerBtn" type="button" aria-label="Remove a seat">−</button>
-      <span id="otherPlayersCount">0</span>
-      <button id="addPlayerBtn" type="button" aria-label="Add a seat">+</button>
-    </div>
-  </div>
-
-  <div class="seat-arrange" id="seatArrangeControl" style="display:none;">
-    <div class="seat-arrange-label">Drag to arrange your seat</div>
+  <div class="seat-arrange" id="seatArrangeControl">
+    <div class="seat-arrange-label">Table seats — drag YOU to arrange, ✕ to remove, + to add</div>
     <div class="seat-row" id="seatRow"></div>
   </div>
 
@@ -1220,29 +1237,13 @@
     seen = seen.filter(s=> s.who !== id);
   }
 
-  function updatePlayerCountDisplay(){
-    const countEl = document.getElementById('otherPlayersCount');
-    if(countEl) countEl.textContent = otherPlayerCount;
-    const addBtn = document.getElementById('addPlayerBtn');
-    const removeBtn = document.getElementById('removePlayerBtn');
-    if(addBtn) addBtn.disabled = (otherPlayerCount >= 6);
-    if(removeBtn) removeBtn.disabled = (otherPlayerCount <= 0);
-  }
-
-  // Renders the drag-to-arrange seat row: one chip per player seat (one is "YOU"),
-  // then a fixed dealer chip. Only the YOU chip is draggable — the other chips are
-  // interchangeable placeholders, so only where YOU end up among them matters.
+  // Renders the unified seat row: one chip per player seat (one is "YOU", draggable),
+  // each non-YOU seat gets a ✕ to remove it, a "+" chip to add another, then a fixed
+  // dealer chip at the end. This is the single control for table size AND seating order.
   function renderSeatRow(){
-    const arrangeCtrl = document.getElementById('seatArrangeControl');
     const row = document.getElementById('seatRow');
-    if(!arrangeCtrl || !row) return;
+    if(!row) return;
     const totalPlayerSeats = otherPlayerCount + 1;
-    if(totalPlayerSeats <= 1){
-      arrangeCtrl.style.display = 'none';
-      yourSeatPosition = 1;
-      return;
-    }
-    arrangeCtrl.style.display = 'block';
     yourSeatPosition = Math.max(1, Math.min(yourSeatPosition, totalPlayerSeats));
 
     row.innerHTML = '';
@@ -1250,12 +1251,23 @@
       const isYou = (i === yourSeatPosition);
       const chip = document.createElement('div');
       chip.className = 'seat-chip' + (isYou ? ' is-you' : '');
-      chip.innerHTML = isYou
-        ? '<span class="chip-icon">●</span>YOU'
-        : '<span class="chip-icon">○</span>Seat';
+      if(isYou){
+        chip.innerHTML = '<span class="chip-icon">●</span>YOU';
+        attachSeatDragHandlers(chip);
+      } else {
+        chip.innerHTML = '<span class="chip-icon">○</span>Seat<span class="chip-remove" data-seat-index="'+i+'">✕</span>';
+      }
       row.appendChild(chip);
-      if(isYou) attachSeatDragHandlers(chip);
     }
+
+    if(otherPlayerCount < 6){
+      const addChip = document.createElement('div');
+      addChip.className = 'seat-chip is-add';
+      addChip.id = 'addSeatChip';
+      addChip.textContent = '+';
+      row.appendChild(addChip);
+    }
+
     const arrow = document.createElement('span');
     arrow.className = 'seat-arrow';
     arrow.textContent = '→';
@@ -1264,6 +1276,38 @@
     dealerChip.className = 'seat-chip is-dealer';
     dealerChip.innerHTML = '<span class="chip-icon">♠</span>Dealer';
     row.appendChild(dealerChip);
+
+    // Wire up this render's ✕ buttons and + chip (rebuilt fresh every render, so no
+    // stale-listener buildup — old elements and their listeners are simply discarded).
+    row.querySelectorAll('.chip-remove').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const seatIndex = parseInt(btn.dataset.seatIndex, 10);
+        // If the removed seat sat visually before YOU, YOU shifts down one slot to
+        // keep your real position relative to the others who are actually still there.
+        if(seatIndex < yourSeatPosition){
+          yourSeatPosition = Math.max(1, yourSeatPosition - 1);
+        }
+        otherPlayerCount = Math.max(0, otherPlayerCount - 1);
+        renderSeatRow();
+        rebuildHandOrder();
+        buildTabs();
+        render();
+        pushState();
+      });
+    });
+    const addChipEl = document.getElementById('addSeatChip');
+    if(addChipEl){
+      addChipEl.addEventListener('click', ()=>{
+        if(otherPlayerCount >= 6) return;
+        otherPlayerCount++;
+        renderSeatRow();
+        rebuildHandOrder();
+        buildTabs();
+        render();
+        pushState();
+      });
+    }
   }
 
   function getSeatChips(){
@@ -2356,26 +2400,6 @@
     initShoe();
     pushState();
   });
-  document.getElementById('addPlayerBtn').addEventListener('click', ()=>{
-    if(otherPlayerCount >= 6) return;
-    otherPlayerCount++;
-    updatePlayerCountDisplay();
-    renderSeatRow();
-    rebuildHandOrder();
-    buildTabs();
-    render();
-    pushState();
-  });
-  document.getElementById('removePlayerBtn').addEventListener('click', ()=>{
-    if(otherPlayerCount <= 0) return;
-    otherPlayerCount--;
-    updatePlayerCountDisplay();
-    renderSeatRow();
-    rebuildHandOrder();
-    buildTabs();
-    render();
-    pushState();
-  });
   document.getElementById('undoBtn').addEventListener('click', undo);
   document.getElementById('undoBtnCards').addEventListener('click', undo);
   document.getElementById('newRoundBtn').addEventListener('click', newRound);
@@ -2496,7 +2520,6 @@
     selectedUpcard21 = s.selectedUpcard21;
     // reflect deck/seat controls in the UI
     const dc = document.getElementById('deckCount'); if(dc) dc.value = String(deckCount);
-    updatePlayerCountDisplay();
     renderSeatRow();
     buildTabs();
     render();
@@ -2652,7 +2675,6 @@
 
   buildPad();
   buildSuitPad();
-  updatePlayerCountDisplay();
   renderSeatRow();
   initShoe();
   pullState(); // adopt any existing shared table state on load
