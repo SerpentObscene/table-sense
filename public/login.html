@@ -70,7 +70,7 @@
     <div class="error" id="err"></div>
     <form id="loginForm">
       <label for="pw">Password</label>
-      <input type="password" id="pw" name="password" autocomplete="current-password" autofocus required>
+      <input type="password" id="pw" name="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus required>
       <button type="submit" id="submitBtn">Sign in</button>
     </form>
   </div>
@@ -96,7 +96,11 @@
         window.location.href = '/';
       } else {
         const body = await res.json().catch(()=>({}));
-        err.textContent = body.error || 'Incorrect password.';
+        let msg = body.error || 'Incorrect password.';
+        if(body.debug && body.debug.hint){
+          msg += ' (' + body.debug.hint + ' You typed ' + body.debug.youTypedLength + ' characters; the server expects ' + body.debug.serverExpectsLength + '.)';
+        }
+        err.textContent = msg;
         err.style.display = 'block';
         btn.disabled = false;
         btn.textContent = 'Sign in';
