@@ -1420,7 +1420,13 @@
   // but the cards themselves stay burned from the shoe (no reshuffle) — running count is untouched.
   // Any split from last round doesn't carry over — a new round starts from the plain seat list.
   function newRound(){
+    // Capture any split-hand ids before removing them, so we can also delete their
+    // leftover data — leaving a stale hands.player_2 object around (even unused)
+    // permanently blocks that seat from ever splitting again, since the eligibility
+    // check treats its mere existence as "already split".
+    const splitIdsToRemove = handOrder.filter(id => id.endsWith('_2'));
     handOrder = handOrder.filter(id => !id.endsWith('_2'));
+    splitIdsToRemove.forEach(id => { delete hands[id]; });
     handOrder.forEach(id=>{ hands[id] = []; });
     activeHand = handOrder[0];
     pendingRank = null;
