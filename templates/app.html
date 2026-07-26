@@ -979,15 +979,22 @@
     gap:clamp(4px, 1vh, 9px);
     min-height:0;
   }
-  body.is-fullscreen #view-cards .pad-cards-rows .pad{
+  body.is-fullscreen #view-cards .pad-cards-rows .pad:not(.pad-row-ace),
+  body.is-fullscreen #view-cards .ace-row-flex{
     margin-bottom:0;
     flex:1;
     min-height:0;
   }
-  body.is-fullscreen #view-cards .pad-cards-rows .pad button{
+  body.is-fullscreen #view-cards .pad-cards-rows .pad button,
+  body.is-fullscreen #view-cards .ace-row-flex .pad-row-ace button{
     aspect-ratio:auto;
     height:100%;
     font-size:clamp(1.1rem, 3vh, 1.6rem);
+  }
+  body.is-fullscreen #view-cards .ace-row-flex .turn-btn{
+    aspect-ratio:auto;
+    height:100%;
+    font-size:clamp(0.6rem, 1.6vh, 0.85rem);
   }
   body.is-fullscreen #view-cards .row-actions{
     flex:0 0 auto;
