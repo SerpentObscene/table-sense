@@ -718,7 +718,7 @@
   .suit-popover-backdrop{
     position:fixed; inset:0; z-index:50;
     background:rgba(0,0,0,0.55);
-    animation:fadeIn 0.15s ease;
+    animation:fadeIn 0.05s ease;
   }
   @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
   @keyframes popIn{ from{transform:translate(-50%, -50%) scale(0.92); opacity:0;} to{transform:translate(-50%, -50%) scale(1); opacity:1;} }
@@ -734,7 +734,7 @@
     border:2px solid var(--line);
     border-radius:20px;
     padding:18px 16px calc(16px + env(safe-area-inset-bottom));
-    animation:popIn 0.18s cubic-bezier(.2,.8,.3,1.2);
+    animation:popIn 0.07s ease-out;
   }
   .suit-popover-title{
     text-align:center;
@@ -943,7 +943,28 @@
   body.is-fullscreen #view-stats .stats-dashboard{
     height: calc(100dvh - 16px); /* just breathing room, no rail/nav to account for */
   }
+  .cards-top-controls{
+    position:absolute;
+    top:clamp(8px, 1vw, 16px);
+    right:clamp(8px, 1vw, 16px);
+    z-index:10;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:6px;
+  }
+  .cards-top-controls .fullscreen-btn{
+    position:static;
+    top:auto; right:auto;
+  }
+  .suit-toggle-btn.is-off{
+    color:var(--red-dark, #FF8F8F);
+    border-color:var(--red);
+  }
   body.is-fullscreen .fullscreen-btn{
+    background:rgba(35,35,41,0.85);
+  }
+  body.is-fullscreen .suit-toggle-btn{
     background:rgba(35,35,41,0.85);
   }
 
@@ -1155,9 +1176,14 @@
 
 <!-- ============ CARDS VIEW (fast input only) ============ -->
 <div class="wrap view" id="view-cards" style="display:none;">
-  <button id="fullscreenBtnCards" class="fullscreen-btn" title="Toggle fullscreen table view">
-    <span id="fullscreenBtnCardsIcon">⛶</span><span id="fullscreenBtnCardsLabel">Fullscreen</span>
-  </button>
+  <div class="cards-top-controls">
+    <button id="fullscreenBtnCards" class="fullscreen-btn" title="Toggle fullscreen table view">
+      <span id="fullscreenBtnCardsIcon">⛶</span><span id="fullscreenBtnCardsLabel">Fullscreen</span>
+    </button>
+    <button id="suitToggleBtnCards" class="fullscreen-btn suit-toggle-btn" title="Toggle suit tracking">
+      <span id="suitToggleIconCards">♠</span><span id="suitToggleLabelCards">Suit: On</span>
+    </button>
+  </div>
   <div class="cards-view-inner">
     <div class="hot-shoe-alert" id="hotShoeAlertCards" style="display:none;"></div>
 
@@ -1265,7 +1291,7 @@
       <div class="odds-grid" id="oddsGridStats"></div>
     </div>
 
-    <div class="stats-col stats-col-right">
+    <div class="stats-col stats-col-right side-bets-panel">
       <div class="section-title">Side bets</div>
       <div class="stats-fill stats-fill-panels">
         <div class="side-panel">
@@ -1329,6 +1355,7 @@
   let dealWrapsUsed = 0;         // wrap-arounds allowed during the initial deal (give-1 -> give-2 needs exactly one)
   let initialDealJumpDone = false; // true once we've jumped from "dealing" to "first player's turn"
   let unknownCardsRemoved = 0;   // cards pulled from the shoe whose identity isn't known yet (dealer's hole card)
+  let suitTrackingEnabled = true; // when off, tapping a rank places the card immediately with an auto-picked suit
 
   function cardKey(rank,suit){ return rank+'|'+suit; }
 
@@ -1465,6 +1492,14 @@
     let t=0; SUITS.forEach(s=> t+=counts[cardKey(r,s)]);
     return t;
   }
+  // Quick-entry mode: any remaining suit of this rank works equally well for the count
+  // and rank-based odds — those never depend on which specific suit was dealt.
+  function pickAnySuit(rank){
+    for(const s of SUITS){
+      if(counts[cardKey(rank,s)] > 0) return s;
+    }
+    return null;
+  }
   function runningCount(){
     return seen.reduce((sum,c)=>sum+HILO[c.rank],0);
   }
@@ -1495,6 +1530,11 @@
     btn.innerHTML = `${r}<span class="tag">${hv>0?'+1':hv<0?'−1':'0'}</span><span class="remain" data-rank="${r}"></span>`;
     btn.dataset.rank = r;
     btn.addEventListener('click', ()=>{
+      if(!suitTrackingEnabled){
+        const s = pickAnySuit(r);
+        if(s) commitCard(r, s);
+        return;
+      }
       if(isCardsPad){
         openSuitPopover(r);
       } else {
@@ -2999,6 +3039,32 @@
   document.addEventListener('fullscreenchange', onNativeFullscreenChange);
   document.addEventListener('webkitfullscreenchange', onNativeFullscreenChange);
 
+  // ---------- Suit tracking on/off (quick entry) ----------
+  // Suit only actually matters for the Perfect Pairs / 21+1 side-bet odds — the running
+  // count and every rank-based probability never depend on it. So turning it off just
+  // skips the suit-selection step entirely (any remaining suit of that rank is charged
+  // against the shoe instead), and hides the side-bet numbers rather than show stale
+  // or misleading ones once we're no longer tracking exact suits.
+  function updateSuitToggleBtn(){
+    const icon = document.getElementById('suitToggleIconCards');
+    const label = document.getElementById('suitToggleLabelCards');
+    const btn = document.getElementById('suitToggleBtnCards');
+    if(icon) icon.textContent = suitTrackingEnabled ? '♠' : '♠';
+    if(label) label.textContent = suitTrackingEnabled ? 'Suit: On' : 'Suit: Off';
+    if(btn) btn.classList.toggle('is-off', !suitTrackingEnabled);
+    document.querySelectorAll('.side-bets-panel').forEach(el=>{
+      el.style.display = suitTrackingEnabled ? '' : 'none';
+    });
+  }
+  const suitToggleBtn = document.getElementById('suitToggleBtnCards');
+  if(suitToggleBtn){
+    suitToggleBtn.addEventListener('click', ()=>{
+      suitTrackingEnabled = !suitTrackingEnabled;
+      updateSuitToggleBtn();
+      pushState();
+    });
+  }
+
   // ---------- Cross-device sync via a real backend (/api/state, Supabase-backed) ----------
   // The server's own write timestamp is the sole authority for "what's newest" — never a
   // client-generated counter. Two devices each counting their own pushes from 0 will both
@@ -3020,7 +3086,7 @@
     return {
       deckCount, otherPlayerCount, yourSeatPosition,
       seen, counts, hands, handOrder, activeHand,
-      selectedUpcard21
+      selectedUpcard21, suitTrackingEnabled
     };
   }
 
@@ -3034,8 +3100,10 @@
     handOrder = s.handOrder;
     activeHand = s.activeHand;
     selectedUpcard21 = s.selectedUpcard21;
+    if(typeof s.suitTrackingEnabled === 'boolean') suitTrackingEnabled = s.suitTrackingEnabled;
     // reflect deck/seat controls in the UI
     const dc = document.getElementById('deckCount'); if(dc) dc.value = String(deckCount);
+    updateSuitToggleBtn();
     buildTabs();
     render();
   }
@@ -3190,6 +3258,7 @@
 
   buildPad();
   buildSuitPad();
+  updateSuitToggleBtn();
   initShoe();
   pullState(); // adopt any existing shared table state on load
   switchView('home');
