@@ -718,19 +718,23 @@
   .suit-popover-backdrop{
     position:fixed; inset:0; z-index:50;
     background:rgba(0,0,0,0.55);
-    display:flex; align-items:flex-end; justify-content:center;
-    padding:0 14px calc(14px + env(safe-area-inset-bottom));
     animation:fadeIn 0.15s ease;
   }
   @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
-  @keyframes slideUp{ from{transform:translateY(24px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+  @keyframes popIn{ from{transform:translate(-50%, -50%) scale(0.92); opacity:0;} to{transform:translate(-50%, -50%) scale(1); opacity:1;} }
   .suit-popover{
-    width:100%; max-width:420px;
+    position:absolute;
+    left:50%; top:50%; /* JS overrides top to the rank grid's vertical center once measured */
+    transform:translate(-50%, -50%);
+    width:calc(100% - 28px);
+    max-width:420px;
+    max-height:calc(100dvh - 28px);
+    overflow-y:auto;
     background:var(--panel);
     border:2px solid var(--line);
-    border-radius:22px 22px 18px 18px;
+    border-radius:20px;
     padding:18px 16px calc(16px + env(safe-area-inset-bottom));
-    animation:slideUp 0.18s cubic-bezier(.2,.8,.3,1.2);
+    animation:popIn 0.18s cubic-bezier(.2,.8,.3,1.2);
   }
   .suit-popover-title{
     text-align:center;
@@ -1568,6 +1572,30 @@
       }
     }
 
+    // Just split (or resuming mid-sequence, including right after an undo): this hand
+    // needs its post-split completion card if it's part of an active split pair and
+    // still has exactly 1 card. Derived fresh from actual state every time, rather than
+    // tracked separately, so it can never drift out of sync with what undo restores.
+    {
+      const isSplitChild = activeHand.endsWith('_2');
+      const baseId = isSplitChild ? activeHand.slice(0,-2) : activeHand;
+      const partnerId = baseId + '_2';
+      const hasPartner = !!hands[partnerId];
+      const isAwaitingCompletion = hasPartner && (hands[activeHand]||[]).length === 1;
+      if(isAwaitingCompletion){
+        addCard(rank, suit, activeHand, {advance:false});
+        if(isSplitChild){
+          activeHand = baseId; // just completed the second hand — back to the first to decide
+        } else {
+          const partnerCards = hands[partnerId] || [];
+          activeHand = (partnerCards.length === 1) ? partnerId : baseId;
+        }
+        render();
+        pushState();
+        return;
+      }
+    }
+
     const stillDealing = !initialDealJumpDone;
     addCard(rank, suit, activeHand, {advance: stillDealing});
 
@@ -1623,7 +1651,18 @@
       b.disabled = counts[cardKey(rank,s)] <= 0;
     });
     const backdrop = document.getElementById('suitPopoverBackdrop');
-    if(backdrop) backdrop.style.display = 'flex';
+    const popover = document.getElementById('suitPopover');
+    if(backdrop) backdrop.style.display = 'block';
+    // Center on the rank grid itself (not the whole screen) — whichever row you just
+    // tapped in, this keeps the popover the shortest possible reach away.
+    if(popover){
+      const padEl = document.getElementById('padCards');
+      if(padEl){
+        const rect = padEl.getBoundingClientRect();
+        const midY = rect.top + rect.height/2;
+        popover.style.top = midY + 'px';
+      }
+    }
   }
   function closeSuitPopover(){
     popoverRank = null;
@@ -1989,12 +2028,16 @@
     if(activeHand.endsWith('_2')) return; // keep it to one split per seat
     const newId = activeHand + '_2';
     if(hands[newId]) return;
+    const baseId = activeHand;
     const movedCard = cards[1];
-    hands[activeHand] = [cards[0]];
+    hands[baseId] = [cards[0]];
     hands[newId] = [movedCard];
-    const idx = handOrder.indexOf(activeHand);
+    const idx = handOrder.indexOf(baseId);
     handOrder.splice(idx+1, 0, newId);
-    seen.push({type:'split', baseId: activeHand, newId, movedCard});
+    seen.push({type:'split', baseId, newId, movedCard});
+    // Each new hand now has exactly 1 card — commitCard's derived-state check will
+    // automatically walk through dealing each its 2nd card in turn, then land back
+    // on the first hand once both are filled, same as a real post-split deal.
     buildTabs();
     render();
     pushState();
