@@ -1539,6 +1539,18 @@
   // that's done, further taps are hits that stay on the active hand until Check moves
   // play on, same as a real table. A bust ends a hand's turn immediately either way.
   function commitCard(rank, suit){
+    // Mid-deal and it's the dealer's turn for their 2nd card — this should always be
+    // auto-hidden, never entered directly, regardless of whether we arrived here via
+    // normal advancing or an undo landing back at exactly this moment.
+    if(activeHand === 'dealer' && !initialDealJumpDone && (hands.dealer||[]).length === 1){
+      insertHiddenDealerCard();
+      initialDealJumpDone = true;
+      activeHand = handOrder[0];
+      render();
+      pushState();
+      return;
+    }
+
     // If the dealer's hole card is still face-down, this tap reveals it rather than
     // adding a brand new third card.
     if(activeHand === 'dealer'){
@@ -1570,7 +1582,7 @@
     if(counts[cardKey(rank,suit)] <= 0) return;
     counts[cardKey(rank,suit)] -= 1;
     hands.dealer[hiddenIdx] = {rank, suit};
-    seen.push({rank, suit, who:'dealer', revealed:true});
+    seen.push({rank, suit, who:'dealer', revealed:true, prevActiveHand: activeHand});
     unknownCardsRemoved = Math.max(0, unknownCardsRemoved - 1);
     render();
     pushState();
@@ -1677,6 +1689,7 @@
       wrap.innerHTML = '';
       let playerSeatIndex = 0;
       handOrder.forEach(id=>{
+        const isSplitChild = id.endsWith('_2');
         const tab = document.createElement('div');
         tab.className = 'hand-tab '+handClass(id)+(id===activeHand?' active':'');
         tab.dataset.hand = id;
@@ -1686,9 +1699,13 @@
           <div class="total-row" data-total="${id}"></div>
           <div class="cards" data-display="${id}">${handToChips(hands[id]||[])}</div>`;
         if(isArc){
-          positionArcTab(tab, id, playerSeatIndex, totalPlayerSeats);
+          // A split hand isn't a new seat at the table — it shares its base hand's
+          // slot, offset just enough to read as two hands in front of the same chair
+          // rather than a whole extra player.
+          const slotIndex = isSplitChild ? playerSeatIndex-1 : playerSeatIndex;
+          positionArcTab(tab, id, slotIndex, totalPlayerSeats, isSplitChild);
         }
-        if(id !== 'dealer') playerSeatIndex++;
+        if(id !== 'dealer' && !isSplitChild) playerSeatIndex++;
         if(readOnly){
           tab.style.cursor = 'default';
         } else if(id === 'player'){
@@ -1742,16 +1759,22 @@
   // like a real table, the two end seats sit closest to the dealer's corners, and the
   // middle seat is the furthest point of the curve. Seat 1 (first in turn order) sits
   // on the right, the last seat on the left.
-  function positionArcTab(tab, id, playerSeatIndex, totalPlayerSeats){
+  function positionArcTab(tab, id, playerSeatIndex, totalPlayerSeats, isSplitChild){
     if(id === 'dealer'){
       tab.style.left = '50%';
       tab.style.top = '12%';
       return;
     }
     const t = totalPlayerSeats <= 1 ? 0.5 : playerSeatIndex/(totalPlayerSeats-1);
-    const xPercent = 90 - t*80; // seat 1 (t=0) on the right, last seat (t=1) on the left
+    let xPercent = 90 - t*80; // seat 1 (t=0) on the right, last seat (t=1) on the left
     const bow = Math.sin(t*Math.PI);
-    const yPercent = 40 + bow*44; // edges near the dealer, middle seat farthest away
+    let yPercent = 40 + bow*44; // edges near the dealer, middle seat farthest away
+    if(isSplitChild){
+      // Sits right next to its base hand, not out at its own seat — nudged down and
+      // slightly to the side so both hands are readable rather than overlapping flat.
+      xPercent += (xPercent > 50 ? -9 : 9);
+      yPercent += 12;
+    }
     tab.style.left = xPercent+'%';
     tab.style.top = yPercent+'%';
   }
@@ -1786,7 +1809,7 @@
       tab.classList.add('dragging');
       const wrap = tab.parentElement;
       const allTabs = Array.from(wrap.querySelectorAll('.hand-tab'));
-      originalOtherTabs = allTabs.filter(t => t !== tab && t.dataset.hand !== 'dealer' && !t.classList.contains('is-add-tab'));
+      originalOtherTabs = allTabs.filter(t => t !== tab && t.dataset.hand !== 'dealer' && !t.classList.contains('is-add-tab') && !t.dataset.hand.endsWith('_2'));
       originalSlotCenters = originalOtherTabs.map(t => {
         const r = t.getBoundingClientRect();
         return r.left + r.width/2;
@@ -1880,7 +1903,7 @@
       tab.classList.add('dragging');
       const wrap = tab.parentElement;
       const allTabs = Array.from(wrap.querySelectorAll('.hand-tab'));
-      const otherSeatTabs = allTabs.filter(t => t !== tab && t.dataset.hand !== 'dealer');
+      const otherSeatTabs = allTabs.filter(t => t !== tab && t.dataset.hand !== 'dealer' && !t.dataset.hand.endsWith('_2'));
       originalOtherCenters = otherSeatTabs.map(t=>{
         const r = t.getBoundingClientRect();
         return r.left + r.width/2;
@@ -1945,6 +1968,7 @@
 
   // Check: "I'm done with this hand" — moves play to the next hand in turn order.
   function checkHand(){
+    seen.push({type:'check', from: activeHand});
     advanceToNextHand();
     render();
     pushState();
@@ -1959,10 +1983,12 @@
     if(activeHand.endsWith('_2')) return; // keep it to one split per seat
     const newId = activeHand + '_2';
     if(hands[newId]) return;
+    const movedCard = cards[1];
     hands[activeHand] = [cards[0]];
-    hands[newId] = [cards[1]];
+    hands[newId] = [movedCard];
     const idx = handOrder.indexOf(activeHand);
     handOrder.splice(idx+1, 0, newId);
+    seen.push({type:'split', baseId: activeHand, newId, movedCard});
     buildTabs();
     render();
     pushState();
@@ -2071,8 +2097,9 @@
 
   function addCard(rank, suit, who, opts){
     if(counts[cardKey(rank,suit)] <= 0) return;
+    const prevActiveHand = activeHand;
     counts[cardKey(rank,suit)] -= 1;
-    seen.push({rank,suit,who,auto:!!(opts&&opts.autoSuit)});
+    seen.push({rank,suit,who,auto:!!(opts&&opts.autoSuit), prevActiveHand});
     if(!hands[who]) hands[who]=[];
     hands[who].push({rank,suit});
     if(opts && opts.advance){
@@ -2114,7 +2141,7 @@
   function insertHiddenDealerCard(){
     if(!hands.dealer) hands.dealer = [];
     hands.dealer.push({rank:'?', suit:'?', hidden:true});
-    seen.push({rank:'?', suit:'?', who:'dealer', hidden:true});
+    seen.push({rank:'?', suit:'?', who:'dealer', hidden:true, prevActiveHand:'dealer'});
     unknownCardsRemoved++;
   }
 
@@ -2122,15 +2149,38 @@
     const last = seen.pop();
     if(!last) return;
 
+    if(last.type === 'check'){
+      activeHand = last.from;
+      render();
+      pushState();
+      return;
+    }
+
+    if(last.type === 'split'){
+      const baseCards = hands[last.baseId] || [];
+      hands[last.baseId] = [...baseCards, last.movedCard];
+      delete hands[last.newId];
+      const idx = handOrder.indexOf(last.newId);
+      if(idx>=0) handOrder.splice(idx,1);
+      activeHand = last.baseId;
+      buildTabs();
+      render();
+      pushState();
+      return;
+    }
+
     if(last.hidden){
       // Undo the auto-inserted hidden hole card — remove the placeholder; the shoe
-      // never had any specific rank charged for it in the first place.
+      // never had any specific rank charged for it in the first place. We're back at
+      // the moment give-2 hadn't reached the dealer yet, so re-arm that transition.
       const arr = hands[last.who];
       if(arr){
         const i = arr.findIndex(c=>c.hidden);
         if(i>=0) arr.splice(i,1);
       }
       unknownCardsRemoved = Math.max(0, unknownCardsRemoved - 1);
+      initialDealJumpDone = false;
+      if(last.prevActiveHand) activeHand = last.prevActiveHand;
       render();
       pushState();
       return;
@@ -2146,6 +2196,7 @@
         if(i>=0) arr[i] = {rank:'?', suit:'?', hidden:true};
       }
       unknownCardsRemoved++;
+      if(last.prevActiveHand) activeHand = last.prevActiveHand;
       render();
       pushState();
       return;
@@ -2157,6 +2208,7 @@
       const i = arr.map(c=>c.rank+c.suit).lastIndexOf(last.rank+last.suit);
       if(i>=0) arr.splice(i,1);
     }
+    if(last.prevActiveHand) activeHand = last.prevActiveHand;
     render();
     pushState();
   }
