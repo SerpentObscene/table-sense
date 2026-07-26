@@ -834,6 +834,95 @@
   .stats-col + .stats-col{ margin-top:20px; }
 
   /* ===== Wide screen (computer monitor): true no-scroll dashboard, using full width/height ===== */
+  /* ===== Stats view fullscreen on a NARROW phone: the 3-column grid above only kicks
+     in at 900px+, so a phone falls through to the plain mobile layout, which was never
+     built to fit one screen. This flattens everything into a single compact flex column
+     instead, scaled and proportioned to actually fill the screen with no scrolling. ===== */
+  @media (max-width: 899px){
+    body.is-fullscreen #view-stats.view{
+      height:100dvh;
+      overflow:hidden;
+      padding-top: calc(6px + var(--sa-top) + 48px); /* clears the fullscreen button sitting on top */
+      padding-bottom: calc(6px + var(--sa-bottom));
+    }
+    body.is-fullscreen #view-stats .stats-dashboard{
+      display:flex;
+      flex-direction:column;
+      height: calc(100dvh - 12px - var(--sa-top) - var(--sa-bottom) - 48px);
+      gap:clamp(3px, 0.8vh, 7px);
+    }
+    body.is-fullscreen #view-stats .stats-col{
+      display:contents; /* flatten — every section becomes a direct flex child below, sharing height fairly */
+    }
+    body.is-fullscreen #view-stats .stats-hero{
+      flex:0 0 auto;
+      gap:clamp(4px, 0.8vw, 8px);
+    }
+    body.is-fullscreen #view-stats .stats-hero-cell{ padding:clamp(4px, 0.8vh, 8px) clamp(4px, 0.8vw, 8px); }
+    body.is-fullscreen #view-stats .stats-hero-label{ font-size:clamp(0.5rem, 1.6vw, 0.6rem); }
+    body.is-fullscreen #view-stats .stats-hero-val{ font-size:clamp(1.1rem, 4.2vh, 1.5rem); }
+    body.is-fullscreen #view-stats .stats-hero-cell.accent .stats-hero-val{ font-size:clamp(1.3rem, 4.8vh, 1.7rem); }
+    body.is-fullscreen #view-stats .heat{ flex:0 0 auto; margin:0 !important; height:8px; }
+    body.is-fullscreen #view-stats .advice{
+      flex:0 0 auto; margin:0 !important;
+      font-size:clamp(0.66rem, 2vh, 0.78rem);
+      padding:clamp(5px, 1vh, 8px) clamp(8px, 1.5vw, 12px);
+    }
+    body.is-fullscreen #view-stats .hot-shoe-alert,
+    body.is-fullscreen #view-stats .insurance-alert{
+      flex:0 0 auto; margin:0 !important;
+      font-size:clamp(0.6rem, 1.8vh, 0.7rem);
+      padding:clamp(4px, 0.9vh, 7px) clamp(7px, 1.4vw, 10px);
+    }
+    body.is-fullscreen #view-stats .stats-fill{ flex:0 0 auto; margin:0 !important; }
+    body.is-fullscreen #view-stats .stats-grid{ gap:clamp(3px, 0.7vw, 6px); }
+    body.is-fullscreen #view-stats .stats-card{ padding:clamp(4px, 0.9vh, 7px) clamp(5px, 1vw, 8px); }
+    body.is-fullscreen #view-stats .stats-card-label{ font-size:clamp(0.52rem, 1.5vw, 0.6rem); }
+    body.is-fullscreen #view-stats .stats-card-val{ font-size:clamp(0.85rem, 3vh, 1.05rem); }
+    body.is-fullscreen #view-stats .section-title{
+      flex:0 0 auto; margin:0 !important;
+      font-size:clamp(0.6rem, 1.8vh, 0.7rem);
+    }
+    body.is-fullscreen #view-stats .hand-tabs.stats-hands{
+      flex:0 0 auto;
+      gap:clamp(3px, 0.7vw, 6px);
+      overflow-x:auto;
+      flex-wrap:nowrap;
+    }
+    body.is-fullscreen #view-stats .hand-tab{
+      min-width:clamp(50px, 12vw, 68px);
+      padding:clamp(4px, 0.8vh, 7px) clamp(4px, 1vw, 7px);
+    }
+    body.is-fullscreen #view-stats .hand-tab .who{ font-size:clamp(0.5rem, 1.5vw, 0.6rem); }
+    body.is-fullscreen #view-stats .hand-tab .total-num{ font-size:clamp(0.85rem, 2.8vh, 1.05rem); }
+    body.is-fullscreen #view-stats .hand-tab .cards{ font-size:clamp(0.55rem, 1.8vw, 0.68rem); }
+    body.is-fullscreen #view-stats .odds-grid{
+      flex:2 1 0;
+      min-height:0;
+      grid-template-columns: repeat(5, 1fr);
+      grid-auto-rows: minmax(0, 1fr);
+      gap:clamp(2px, 0.6vw, 5px);
+    }
+    body.is-fullscreen #view-stats .odds-cell{ padding:clamp(2px, 0.6vh, 4px) 2px; }
+    body.is-fullscreen #view-stats .odds-cell .rank{ font-size:clamp(0.62rem, 2vh, 0.78rem); }
+    body.is-fullscreen #view-stats .odds-cell .pct{ font-size:clamp(0.48rem, 1.5vh, 0.58rem); }
+    body.is-fullscreen #view-stats .odds-cell .cnt{ font-size:clamp(0.4rem, 1.2vh, 0.48rem); }
+    body.is-fullscreen #view-stats .stats-fill-panels{
+      flex:1 1 0;
+      min-height:0;
+      flex-direction:row;
+      gap:clamp(4px, 1vw, 8px);
+      margin:0 !important;
+    }
+    body.is-fullscreen #view-stats .stats-fill-panels .side-panel{
+      flex:1; min-height:0; overflow:hidden;
+      padding:clamp(4px, 0.9vh, 7px) clamp(6px, 1.2vw, 9px);
+    }
+    body.is-fullscreen #view-stats .side-panel .title{ font-size:clamp(0.6rem, 1.8vh, 0.7rem); margin-bottom:clamp(2px, 0.5vh, 4px); }
+    body.is-fullscreen #view-stats .side-panel .line{ font-size:clamp(0.58rem, 1.7vh, 0.68rem); padding:clamp(1px, 0.3vh, 2px) 0; }
+    body.is-fullscreen #view-stats footer{ display:none; }
+  }
+
   @media (min-width: 900px){
     body{ padding-bottom:0; }
     #view-stats.view{
@@ -858,6 +947,17 @@
       flex-direction:column;
     }
     #view-stats .stats-col + .stats-col{ margin-top:0; }
+
+    /* Fullscreen on a wide screen: rail/nav are hidden so the normal 150px offset
+       above is too generous, but the fullscreen button itself still needs clearance,
+       plus whatever safe-area a wide touchscreen (like an iPad) might have. */
+    body.is-fullscreen #view-stats.view{
+      padding-top: calc(8px + var(--sa-top) + 48px);
+      padding-bottom: var(--sa-bottom);
+    }
+    body.is-fullscreen #view-stats .stats-dashboard{
+      height: calc(100dvh - 16px - var(--sa-top) - var(--sa-bottom) - 48px);
+    }
 
     /* A block that grows to absorb whatever vertical space is left in its column,
        instead of shrink-wrapping its content and leaving dead space below it. */
@@ -950,30 +1050,30 @@
 
   /* When actually in the browser's Fullscreen API mode: strip every bit of chrome
      so the dashboard is the only thing on screen — a true dedicated monitor view. */
+  body.is-fullscreen{
+    --sa-top: env(safe-area-inset-top, 0px);
+    --sa-bottom: env(safe-area-inset-bottom, 0px);
+  }
   body.is-fullscreen .rail{ display:none; }
   body.is-fullscreen .bottom-nav{ display:none; }
   body.is-fullscreen{ padding-bottom:0; }
-  body.is-fullscreen #view-stats.view{
-    padding-top:8px;
-  }
-  body.is-fullscreen #view-stats .stats-dashboard{
-    height: calc(100dvh - 16px); /* just breathing room, no rail/nav to account for */
-  }
   body.is-fullscreen .fullscreen-btn{
     background:rgba(35,35,41,0.85);
+    top: calc(clamp(8px, 1vw, 16px) + var(--sa-top));
+    right: calc(clamp(8px, 1vw, 16px) + env(safe-area-inset-right, 0px));
   }
 
   /* ===== Cards view fullscreen: fit everything on one iPad/phone screen, no scrolling ===== */
   body.is-fullscreen #view-cards.view{
-    padding-top:clamp(8px, 1.5vh, 16px);
-    padding-bottom:clamp(6px, 1vh, 12px);
+    padding-top: calc(clamp(8px, 1.5vh, 16px) + var(--sa-top) + 48px); /* clears the fullscreen button sitting on top */
+    padding-bottom: calc(clamp(6px, 1vh, 12px) + var(--sa-bottom));
     height:100dvh;
     overflow:hidden;
   }
   body.is-fullscreen #view-cards .cards-view-inner{
     display:flex;
     flex-direction:column;
-    height:calc(100dvh - clamp(14px, 2.5vh, 28px));
+    height: calc(100dvh - clamp(14px, 2.5vh, 28px) - var(--sa-top) - var(--sa-bottom) - 48px);
     overflow:hidden;
   }
   body.is-fullscreen #view-cards .table-arc-wrap{
@@ -1496,7 +1596,10 @@
     return null;
   }
   function runningCount(){
-    return seen.reduce((sum,c)=>sum+HILO[c.rank],0);
+    // seen also holds non-card markers (Check presses, Splits, the hidden dealer
+    // placeholder) for undo purposes — none of those have a real rank, so they must
+    // contribute 0 to the count rather than poisoning the whole sum with NaN.
+    return seen.reduce((sum,c)=>sum+(HILO[c.rank] || 0),0);
   }
   function decksRemaining(){
     return totalRemaining()/52;
