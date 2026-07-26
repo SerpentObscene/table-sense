@@ -1658,11 +1658,11 @@
         : `Dealer stands at ${activeValue.total} — round over`;
       if(homeHint) homeHint.textContent = msg;
       if(cardsHint) cardsHint.textContent = msg;
-      PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button').forEach(b=>b.disabled=true));
+      PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button[data-rank]').forEach(b=>b.disabled=true));
       SUIT_PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button').forEach(b=>b.disabled=true));
       return;
     }
-    PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button').forEach(b=>{ if(rankRemaining(b.dataset.rank)>0) b.disabled=false; }));
+    PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button[data-rank]').forEach(b=>{ if(rankRemaining(b.dataset.rank)>0) b.disabled=false; }));
 
     // Cards view: always a simple one-line status, independent of pendingRank (popover handles suit).
     if(cardsHint){
