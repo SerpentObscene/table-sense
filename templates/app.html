@@ -262,6 +262,42 @@
     font-family:var(--display); font-weight:800; font-size:0.92rem; color:var(--ink);
     min-width:1em; text-align:center;
   }
+
+  /* ===== Table-arc layout (Cards view): seats curved toward the dealer, like the real table ===== */
+  .table-arc-wrap{
+    position:relative;
+    margin-bottom:10px;
+  }
+  .table-arc-count{
+    position:absolute;
+    top:6px; left:6px;
+    z-index:6;
+  }
+  .table-arc{
+    position:relative;
+    width:100%;
+    height:clamp(180px, 34vh, 300px);
+  }
+  .table-arc .hand-tab{
+    position:absolute;
+    transform:translate(-50%, -50%);
+    min-width:0;
+    width:clamp(58px, 15vw, 92px);
+    padding:clamp(6px, 1vw, 10px) clamp(6px, 1vw, 8px);
+    text-align:center;
+    transition:left 0.25s ease, top 0.25s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .table-arc .hand-tab.dragging{ transition:none; }
+  .table-arc .hand-tab .who{ justify-content:center; font-size:clamp(0.56rem, 1.6vw, 0.68rem); }
+  .table-arc .hand-tab .who::before{ display:none; } /* the color dot is redundant at this size; border color already shows it */
+  .table-arc .hand-tab .total-row{ justify-content:center; min-height:auto; margin:3px 0 1px; }
+  .table-arc .hand-tab .total-num{ font-size:clamp(1.1rem, 3.2vw, 1.7rem); }
+  .table-arc .hand-tab .cards{ font-size:clamp(0.6rem, 1.7vw, 0.76rem); text-align:center; }
+  .table-arc .hand-tab .status-pill{ font-size:0.52rem; padding:1px 5px; }
+  .table-arc .hand-tab.dealer{
+    width:clamp(64px, 16vw, 100px);
+  }
+
   .hand-tabs{
     display:flex;
     gap:10px;
@@ -283,6 +319,7 @@
     transition:border-color 0.15s ease, transform 0.08s ease, background 0.15s ease;
   }
   .hand-tab:active{transform:translateY(2px); border-bottom-width:2px;}
+  .table-arc .hand-tab:active{transform:translate(-50%, -50%) translateY(2px);}
   .hand-tab .who{
     font-family:var(--body); font-size:0.68rem; letter-spacing:0.02em; text-transform:uppercase;
     color:var(--hand-color, var(--ink-soft));
@@ -846,6 +883,74 @@
   body.is-fullscreen .fullscreen-btn{
     background:rgba(35,35,41,0.85);
   }
+
+  /* ===== Cards view fullscreen: fit everything on one iPad/phone screen, no scrolling ===== */
+  body.is-fullscreen #view-cards.view{
+    padding-top:clamp(8px, 1.5vh, 16px);
+    padding-bottom:clamp(6px, 1vh, 12px);
+    height:100dvh;
+    overflow:hidden;
+  }
+  body.is-fullscreen #view-cards .cards-view-inner{
+    display:flex;
+    flex-direction:column;
+    height:calc(100dvh - clamp(14px, 2.5vh, 28px));
+    overflow:hidden;
+  }
+  body.is-fullscreen #view-cards .table-arc-wrap{
+    flex:1 1 auto;
+    min-height:120px;
+    margin-bottom:clamp(4px, 1vh, 10px);
+  }
+  body.is-fullscreen #view-cards .table-arc{
+    height:100%;
+  }
+  body.is-fullscreen #view-cards .hot-shoe-alert,
+  body.is-fullscreen #view-cards .insurance-alert{
+    flex:0 0 auto;
+    font-size:clamp(0.66rem, 1.6vh, 0.85rem);
+    padding:clamp(6px, 1vh, 10px) clamp(9px, 1.4vh, 14px);
+    margin-bottom:clamp(4px, 1vh, 8px);
+  }
+  body.is-fullscreen #view-cards #revealHoleWrapCards{
+    flex:0 0 auto;
+    margin-bottom:clamp(4px, 1vh, 8px) !important;
+  }
+  body.is-fullscreen #view-cards .reveal-btn{
+    padding:clamp(8px, 1.4vh, 13px);
+    font-size:clamp(0.72rem, 1.6vh, 0.85rem);
+  }
+  body.is-fullscreen #view-cards .big-hint{
+    flex:0 0 auto;
+    margin:0 0 clamp(4px, 1vh, 10px);
+    font-size:clamp(0.8rem, 1.8vh, 0.95rem);
+  }
+  body.is-fullscreen #view-cards .pad-cards-rows{
+    flex:1.3 1 auto;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:clamp(4px, 1vh, 9px);
+    min-height:0;
+  }
+  body.is-fullscreen #view-cards .pad-cards-rows .pad{
+    margin-bottom:0;
+    flex:1;
+    min-height:0;
+  }
+  body.is-fullscreen #view-cards .pad-cards-rows .pad button{
+    aspect-ratio:auto;
+    height:100%;
+    font-size:clamp(1.1rem, 3vh, 1.6rem);
+  }
+  body.is-fullscreen #view-cards .row-actions{
+    flex:0 0 auto;
+    margin-top:clamp(4px, 1vh, 8px) !important;
+  }
+  body.is-fullscreen #view-cards .row-actions button{
+    padding:clamp(8px, 1.4vh, 12px);
+    font-size:clamp(0.68rem, 1.5vh, 0.78rem);
+  }
 </style>
 </head>
 <body>
@@ -979,16 +1084,21 @@
 
 <!-- ============ CARDS VIEW (fast input only) ============ -->
 <div class="wrap view" id="view-cards" style="display:none;">
+  <button id="fullscreenBtnCards" class="fullscreen-btn" title="Toggle fullscreen table view">
+    <span id="fullscreenBtnCardsIcon">⛶</span><span id="fullscreenBtnCardsLabel">Fullscreen</span>
+  </button>
   <div class="cards-view-inner">
     <div class="hot-shoe-alert" id="hotShoeAlertCards" style="display:none;"></div>
-    <div class="hand-tabs-row">
-      <div class="seat-count-control">
+
+    <div class="table-arc-wrap">
+      <div class="seat-count-control table-arc-count">
         <button id="removeSeatBtnCards" class="seat-count-btn" type="button" aria-label="Remove a seat">−</button>
         <span id="seatCountDisplayCards" class="seat-count-num">1</span>
         <button id="addSeatBtnCards" class="seat-count-btn" type="button" aria-label="Add a seat">+</button>
       </div>
-      <div class="hand-tabs" id="handTabsCards"></div>
+      <div class="table-arc" id="handTabsCards"></div>
     </div>
+
     <div class="insurance-alert" id="insuranceAlertCards" style="display:none;"></div>
     <div id="revealHoleWrapCards" style="display:none; margin-bottom:10px;">
       <button id="revealHoleBtnCards" class="reveal-btn">👁 Dealer flips — tap it in</button>
@@ -1457,11 +1567,14 @@
 
   // ---------- hand tabs ----------
   function buildTabs(){
+    const totalPlayerSeats = otherPlayerCount + 1;
     HAND_TABS_IDS.forEach(wrapId=>{
       const wrap = document.getElementById(wrapId);
       if(!wrap) return;
       const readOnly = (wrapId === 'handTabsStats');
+      const isArc = (wrapId === 'handTabsCards');
       wrap.innerHTML = '';
+      let playerSeatIndex = 0;
       handOrder.forEach(id=>{
         const tab = document.createElement('div');
         tab.className = 'hand-tab '+handClass(id)+(id===activeHand?' active':'');
@@ -1471,10 +1584,18 @@
         tab.innerHTML = `<div class="who">${handLabel(id)}${clearChip}</div>
           <div class="total-row" data-total="${id}"></div>
           <div class="cards" data-display="${id}">${handToChips(hands[id]||[])}</div>`;
+        if(isArc){
+          positionArcTab(tab, id, playerSeatIndex, totalPlayerSeats);
+        }
+        if(id !== 'dealer') playerSeatIndex++;
         if(readOnly){
           tab.style.cursor = 'default';
         } else if(id === 'player'){
-          attachPlayerTabDragHandlers(tab);
+          if(isArc){
+            attachArcPlayerDragHandlers(tab);
+          } else {
+            attachPlayerTabDragHandlers(tab);
+          }
           tab.querySelector('.clear-x').addEventListener('click', (e)=>{
             e.stopPropagation();
             clearHand(id);
@@ -1513,6 +1634,23 @@
     });
     renderTotals();
     updateSeatCountDisplay();
+  }
+
+  // Places a hand-tab along the "blackjack table" arc: dealer fixed at top-center,
+  // player seats curved below in a bow — the middle seat sits closest to the dealer,
+  // edge seats curve down and out to the sides, echoing a real table's shape.
+  function positionArcTab(tab, id, playerSeatIndex, totalPlayerSeats){
+    if(id === 'dealer'){
+      tab.style.left = '50%';
+      tab.style.top = '12%';
+      return;
+    }
+    const t = totalPlayerSeats <= 1 ? 0.5 : playerSeatIndex/(totalPlayerSeats-1);
+    const xPercent = 10 + t*80;
+    const bow = Math.sin(t*Math.PI);
+    const yPercent = 84 - bow*44;
+    tab.style.left = xPercent+'%';
+    tab.style.top = yPercent+'%';
   }
 
   function updateSeatCountDisplay(){
@@ -1613,6 +1751,83 @@
         pushState();
       } else if(!moved){
         // A plain tap with no meaningful movement — select this hand, same as any other tab.
+        activeHand = 'player';
+        renderTabs();
+        renderSuitPad();
+        pushState();
+      }
+    }
+
+    tab.addEventListener('pointerdown', onPointerDown);
+  }
+
+  // Drag handling for the arc (table) layout — since seats are absolutely positioned
+  // rather than laid out in flex order, there's no need to live-reorder DOM siblings
+  // mid-drag. Just visually follow the pointer, then snap every chip to its correct
+  // freshly-computed arc position in one shot on release (buildTabs() handles that).
+  function attachArcPlayerDragHandlers(tab){
+    let dragging = false;
+    let moved = false;
+    let startX = 0, startY = 0;
+    let originalOtherCenters = []; // x-centers of other player seats, captured once at drag start
+    const DRAG_THRESHOLD = 6;
+
+    function beginDrag(){
+      dragging = true;
+      tab.classList.add('dragging');
+      const wrap = tab.parentElement;
+      const allTabs = Array.from(wrap.querySelectorAll('.hand-tab'));
+      const otherSeatTabs = allTabs.filter(t => t !== tab && t.dataset.hand !== 'dealer');
+      originalOtherCenters = otherSeatTabs.map(t=>{
+        const r = t.getBoundingClientRect();
+        return r.left + r.width/2;
+      });
+    }
+
+    function onPointerDown(e){
+      if(e.target.classList.contains('clear-x')) return;
+      startX = e.clientX;
+      startY = e.clientY;
+      moved = false;
+      dragging = false;
+      tab.setPointerCapture(e.pointerId);
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', onPointerUp);
+    }
+
+    function onPointerMove(e){
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if(!dragging){
+        if(Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD){
+          beginDrag();
+        } else {
+          return;
+        }
+      }
+      moved = true;
+      e.preventDefault();
+      tab.style.transform = 'translate(calc(-50% + '+dx+'px), calc(-50% + '+dy+'px))';
+    }
+
+    function onPointerUp(e){
+      tab.releasePointerCapture(e.pointerId);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+
+      if(dragging){
+        tab.classList.remove('dragging');
+        tab.style.transform = '';
+        let targetIndex = 0;
+        for(const centerX of originalOtherCenters){
+          if(e.clientX > centerX) targetIndex++;
+        }
+        yourSeatPosition = targetIndex + 1;
+        rebuildHandOrder();
+        buildTabs();
+        render();
+        pushState();
+      } else if(!moved){
         activeHand = 'player';
         renderTabs();
         renderSuitPad();
@@ -2429,9 +2644,9 @@
     document.querySelectorAll('.nav-btn').forEach(btn=>{
       btn.classList.toggle('active', btn.dataset.view===view);
     });
-    // Fullscreen monitoring mode only makes sense on the Stats view — drop out of it
-    // automatically if the user switches away while it's active.
-    if(view !== 'stats' && document.fullscreenElement){
+    // Fullscreen monitoring mode makes sense on Stats and Cards — drop out of it only
+    // when switching to Home, where a fullscreen kiosk view doesn't apply.
+    if(view === 'home' && document.fullscreenElement){
       document.exitFullscreen().catch(()=>{});
     }
   }
@@ -2441,25 +2656,33 @@
 
   // ---------- Fullscreen monitoring mode ----------
   function isFullscreen(){ return !!document.fullscreenElement; }
+  const FULLSCREEN_BTN_IDS = [
+    {btn:'fullscreenBtn', icon:'fullscreenBtnIcon', label:'fullscreenBtnLabel'},
+    {btn:'fullscreenBtnCards', icon:'fullscreenBtnCardsIcon', label:'fullscreenBtnCardsLabel'}
+  ];
   function updateFullscreenBtn(){
-    const icon = document.getElementById('fullscreenBtnIcon');
-    const label = document.getElementById('fullscreenBtnLabel');
     const fs = isFullscreen();
     document.body.classList.toggle('is-fullscreen', fs);
-    if(icon) icon.textContent = fs ? '⤢' : '⛶';
-    if(label) label.textContent = fs ? 'Exit fullscreen' : 'Fullscreen';
-  }
-  const fullscreenBtn = document.getElementById('fullscreenBtn');
-  if(fullscreenBtn){
-    fullscreenBtn.addEventListener('click', ()=>{
-      if(!isFullscreen()){
-        document.documentElement.requestFullscreen().catch(()=>{});
-      } else {
-        document.exitFullscreen().catch(()=>{});
-      }
+    FULLSCREEN_BTN_IDS.forEach(ids=>{
+      const icon = document.getElementById(ids.icon);
+      const label = document.getElementById(ids.label);
+      if(icon) icon.textContent = fs ? '⤢' : '⛶';
+      if(label) label.textContent = fs ? 'Exit fullscreen' : 'Fullscreen';
     });
   }
-  // Keep the button/label correct even if the user exits via Esc or the browser's own UI.
+  FULLSCREEN_BTN_IDS.forEach(ids=>{
+    const btn = document.getElementById(ids.btn);
+    if(btn){
+      btn.addEventListener('click', ()=>{
+        if(!isFullscreen()){
+          document.documentElement.requestFullscreen().catch(()=>{});
+        } else {
+          document.exitFullscreen().catch(()=>{});
+        }
+      });
+    }
+  });
+  // Keep every button's icon/label correct even if exited via Esc or the browser's own UI.
   document.addEventListener('fullscreenchange', updateFullscreenBtn);
 
   // ---------- Cross-device sync via a real backend (/api/state, Supabase-backed) ----------
