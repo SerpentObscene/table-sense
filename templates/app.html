@@ -644,35 +644,42 @@
   .big-pad button .tag{font-size:0.64rem;}
   .big-pad button .remain{font-size:0.62rem;}
   .pad-row-ace{
-    grid-template-columns: 1fr;
-    justify-items:center;
+    display:flex;
     margin-bottom:0;
   }
   .pad-row-ace button{
-    width:calc(25% - 7px); /* match one column's width from the 4-col rows below */
+    width:100%;
+    font-size:1.7rem;
+    border-radius:18px;
+    aspect-ratio:1/1.05;
   }
   .ace-row-flex{
     display:flex;
     align-items:stretch;
+    justify-content:center;
     gap:9px;
     margin-bottom:10px;
   }
-  .ace-row-flex .pad-row-ace{
-    flex:1;
+  .ace-row-flex > *{
+    /* Same width as a single column in the 4-col rows below (gap 9px, 3 gaps per row) —
+       fixed to the full row's width, not stretched to fill whatever's left in this row,
+       so Split/Ace/Check always come out exactly rank-button-sized regardless of how
+       many things share this particular row. */
+    flex: 0 0 calc((100% - 27px) / 4);
   }
   .turn-btn{
-    flex:0 0 auto;
-    width:20%;
     border-radius:18px;
+    aspect-ratio:1/1.05;
     border:none;
     font-family:var(--display);
     font-weight:800;
-    font-size:0.8rem;
+    font-size:0.72rem;
+    line-height:1.15;
     letter-spacing:0.01em;
     cursor:pointer;
     display:flex; align-items:center; justify-content:center;
     text-align:center;
-    padding:6px 4px;
+    padding:4px;
   }
   .turn-btn:active{transform:translateY(2px);}
   .check-btn{
