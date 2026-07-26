@@ -226,10 +226,47 @@
   }
 
   /* Hand tabs: Dealer / Player / Seats */
+  .hand-tabs-row{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .seat-count-control{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:8px 9px;
+    background:var(--panel);
+    border:2px solid var(--line);
+    border-bottom:4px solid var(--line);
+    border-radius:14px;
+  }
+  .seat-count-btn{
+    width:28px; height:28px;
+    border-radius:8px;
+    border:2px solid var(--line);
+    background:var(--panel-2);
+    color:var(--ink);
+    font-family:var(--display);
+    font-size:1.05rem;
+    font-weight:800;
+    line-height:1;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .seat-count-btn:active{transform:scale(0.92);}
+  .seat-count-btn:disabled{opacity:0.35; cursor:default;}
+  .seat-count-num{
+    font-family:var(--display); font-weight:800; font-size:0.92rem; color:var(--ink);
+    min-width:1em; text-align:center;
+  }
   .hand-tabs{
     display:flex;
     gap:10px;
-    margin-bottom:8px;
+    flex:1;
+    min-width:0;
     overflow-x:auto;
     padding:2px 2px 8px;
     -webkit-overflow-scrolling:touch;
@@ -567,6 +604,13 @@
   }
   .big-pad button .tag{font-size:0.64rem;}
   .big-pad button .remain{font-size:0.62rem;}
+  .pad-row-ace{
+    grid-template-columns: 1fr;
+    justify-items:center;
+  }
+  .pad-row-ace button{
+    width:calc(25% - 7px); /* match one column's width from the 4-col rows below */
+  }
   .big-suit-pad{gap:9px;}
   .big-suit-pad button{
     padding:20px 0;
@@ -872,7 +916,14 @@
 
   <section style="margin-top:16px;">
     <div class="section-title">Whose card? <span class="hint" id="cardsSeenLabel">0 seen</span></div>
-    <div class="hand-tabs" id="handTabs"></div>
+    <div class="hand-tabs-row">
+      <div class="seat-count-control">
+        <button id="removeSeatBtn" class="seat-count-btn" type="button" aria-label="Remove a seat">−</button>
+        <span id="seatCountDisplay" class="seat-count-num">1</span>
+        <button id="addSeatBtn" class="seat-count-btn" type="button" aria-label="Add a seat">+</button>
+      </div>
+      <div class="hand-tabs" id="handTabs"></div>
+    </div>
     <div id="revealHoleWrap" style="display:none; margin-bottom:10px;">
       <button id="revealHoleBtn" class="reveal-btn">👁 Dealer flips hole card — tap it in</button>
     </div>
@@ -880,8 +931,8 @@
     <div class="section-title" style="margin-top:4px;">Tap rank, then suit</div>
     <div class="pad" id="pad"></div>
     <div class="suit-pad" id="suitPad">
-      <button data-suit="♠">♠</button>
       <button data-suit="♥" class="red">♥</button>
+      <button data-suit="♠">♠</button>
       <button data-suit="♦" class="red">♦</button>
       <button data-suit="♣">♣</button>
     </div>
@@ -930,13 +981,25 @@
 <div class="wrap view" id="view-cards" style="display:none;">
   <div class="cards-view-inner">
     <div class="hot-shoe-alert" id="hotShoeAlertCards" style="display:none;"></div>
-    <div class="hand-tabs" id="handTabsCards"></div>
+    <div class="hand-tabs-row">
+      <div class="seat-count-control">
+        <button id="removeSeatBtnCards" class="seat-count-btn" type="button" aria-label="Remove a seat">−</button>
+        <span id="seatCountDisplayCards" class="seat-count-num">1</span>
+        <button id="addSeatBtnCards" class="seat-count-btn" type="button" aria-label="Add a seat">+</button>
+      </div>
+      <div class="hand-tabs" id="handTabsCards"></div>
+    </div>
     <div class="insurance-alert" id="insuranceAlertCards" style="display:none;"></div>
     <div id="revealHoleWrapCards" style="display:none; margin-bottom:10px;">
       <button id="revealHoleBtnCards" class="reveal-btn">👁 Dealer flips — tap it in</button>
     </div>
     <div class="suit-hint big-hint" id="suitHintCards">Pick a rank</div>
-    <div class="pad big-pad" id="padCards"></div>
+    <div class="pad-cards-rows" id="padCards">
+      <div class="pad big-pad pad-row-ace" id="padCardsRowAce"></div>
+      <div class="pad big-pad" id="padCardsRow1"></div>
+      <div class="pad big-pad" id="padCardsRow2"></div>
+      <div class="pad big-pad" id="padCardsRow3"></div>
+    </div>
     <div class="row-actions" style="margin-top:10px;">
       <button class="danger" id="undoBtnCards">↩ Undo</button>
       <button class="primary" id="newRoundBtnCards">▶ New round</button>
@@ -952,8 +1015,8 @@
   <div class="suit-popover" id="suitPopover">
     <div class="suit-popover-title" id="suitPopoverTitle">7 of…</div>
     <div class="suit-pad big-suit-pad" id="suitPadPopover">
-      <button data-suit="♠">♠</button>
       <button data-suit="♥" class="red">♥</button>
+      <button data-suit="♠">♠</button>
       <button data-suit="♦" class="red">♦</button>
       <button data-suit="♣">♣</button>
     </div>
@@ -1217,28 +1280,45 @@
   const SUIT_PAD_IDS = ['suitPad']; // suitPadCards replaced by the popover flow
   const HAND_TABS_IDS = ['handTabs','handTabsCards','handTabsStats'];
 
+  const CARDS_ROW_FOR_RANK = {
+    'A':'padCardsRowAce',
+    '2':'padCardsRow1','3':'padCardsRow1','4':'padCardsRow1','5':'padCardsRow1',
+    '6':'padCardsRow2','7':'padCardsRow2','8':'padCardsRow2','9':'padCardsRow2',
+    '10':'padCardsRow3','J':'padCardsRow3','Q':'padCardsRow3','K':'padCardsRow3'
+  };
+
+  function makeRankButton(r, isCardsPad){
+    const btn = document.createElement('button');
+    const hv = HILO[r];
+    btn.innerHTML = `${r}<span class="tag">${hv>0?'+1':hv<0?'−1':'0'}</span><span class="remain" data-rank="${r}"></span>`;
+    btn.dataset.rank = r;
+    btn.addEventListener('click', ()=>{
+      if(isCardsPad){
+        openSuitPopover(r);
+      } else {
+        pendingRank = r;
+        renderPad();
+        renderSuitPad();
+      }
+    });
+    return btn;
+  }
+
   function buildPad(){
-    PAD_IDS.forEach(padId=>{
-      const pad = document.getElementById(padId);
-      if(!pad) return;
-      const isCardsPad = (padId === 'padCards');
-      pad.innerHTML = '';
-      RANKS.forEach(r=>{
-        const btn = document.createElement('button');
-        const hv = HILO[r];
-        btn.innerHTML = `${r}<span class="tag">${hv>0?'+1':hv<0?'−1':'0'}</span><span class="remain" data-rank="${r}"></span>`;
-        btn.dataset.rank = r;
-        btn.addEventListener('click', ()=>{
-          if(isCardsPad){
-            openSuitPopover(r);
-          } else {
-            pendingRank = r;
-            renderPad();
-            renderSuitPad();
-          }
-        });
-        pad.appendChild(btn);
-      });
+    // Home pad: unchanged flat grid, ranks in order.
+    const homePad = document.getElementById('pad');
+    if(homePad){
+      homePad.innerHTML = '';
+      RANKS.forEach(r=>homePad.appendChild(makeRankButton(r, false)));
+    }
+    // Cards pad: Ace alone on its own centered row, then three rows of four.
+    Object.values(CARDS_ROW_FOR_RANK).filter((v,i,a)=>a.indexOf(v)===i).forEach(rowId=>{
+      const rowEl = document.getElementById(rowId);
+      if(rowEl) rowEl.innerHTML = '';
+    });
+    RANKS.forEach(r=>{
+      const rowEl = document.getElementById(CARDS_ROW_FOR_RANK[r]);
+      if(rowEl) rowEl.appendChild(makeRankButton(r, true));
     });
   }
 
@@ -1383,25 +1463,6 @@
       const readOnly = (wrapId === 'handTabsStats');
       wrap.innerHTML = '';
       handOrder.forEach(id=>{
-        if(id === 'dealer' && !readOnly){
-          // "+" to add a seat sits right before the dealer, in the editable views only.
-          const addTab = document.createElement('div');
-          const atMax = (otherPlayerCount >= 7);
-          addTab.className = 'hand-tab is-add-tab' + (atMax ? ' disabled' : '');
-          addTab.textContent = '+';
-          addTab.title = 'Add a seat';
-          if(!atMax){
-            addTab.addEventListener('click', ()=>{
-              otherPlayerCount++;
-              rebuildHandOrder();
-              buildTabs();
-              render();
-              pushState();
-            });
-          }
-          wrap.appendChild(addTab);
-        }
-
         const tab = document.createElement('div');
         tab.className = 'hand-tab '+handClass(id)+(id===activeHand?' active':'');
         tab.dataset.hand = id;
@@ -1451,6 +1512,24 @@
       });
     });
     renderTotals();
+    updateSeatCountDisplay();
+  }
+
+  function updateSeatCountDisplay(){
+    ['seatCountDisplay','seatCountDisplayCards'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.textContent = otherPlayerCount;
+    });
+    const atMax = (otherPlayerCount >= 7);
+    const atMin = (otherPlayerCount <= 0);
+    ['addSeatBtn','addSeatBtnCards'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.disabled = atMax;
+    });
+    ['removeSeatBtn','removeSeatBtnCards'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.disabled = atMin;
+    });
   }
 
   function attachPlayerTabDragHandlers(tab){
@@ -2282,6 +2361,26 @@
     initShoe();
     pushState();
   });
+  function addSeat(){
+    if(otherPlayerCount >= 7) return;
+    otherPlayerCount++;
+    rebuildHandOrder();
+    buildTabs();
+    render();
+    pushState();
+  }
+  function removeSeat(){
+    if(otherPlayerCount <= 0) return;
+    otherPlayerCount--;
+    rebuildHandOrder();
+    buildTabs();
+    render();
+    pushState();
+  }
+  document.getElementById('addSeatBtn').addEventListener('click', addSeat);
+  document.getElementById('addSeatBtnCards').addEventListener('click', addSeat);
+  document.getElementById('removeSeatBtn').addEventListener('click', removeSeat);
+  document.getElementById('removeSeatBtnCards').addEventListener('click', removeSeat);
   document.getElementById('undoBtn').addEventListener('click', undo);
   document.getElementById('undoBtnCards').addEventListener('click', undo);
   document.getElementById('newRoundBtn').addEventListener('click', newRound);
