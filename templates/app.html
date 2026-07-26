@@ -1979,7 +1979,7 @@
   // other's total, exactly as if a second player had joined that seat.
   function splitActiveHand(){
     const cards = hands[activeHand] || [];
-    if(cards.length !== 2 || cards[0].rank !== cards[1].rank) return;
+    if(cards.length !== 2 || RANK_VALUE[cards[0].rank] !== RANK_VALUE[cards[1].rank]) return;
     if(activeHand.endsWith('_2')) return; // keep it to one split per seat
     const newId = activeHand + '_2';
     if(hands[newId]) return;
@@ -1996,7 +1996,7 @@
 
   function updateTurnButtons(){
     const cards = hands[activeHand] || [];
-    const canSplit = cards.length===2 && cards[0].rank===cards[1].rank && !activeHand.endsWith('_2') && !hands[activeHand+'_2'];
+    const canSplit = cards.length===2 && RANK_VALUE[cards[0].rank]===RANK_VALUE[cards[1].rank] && !activeHand.endsWith('_2') && !hands[activeHand+'_2'];
     ['splitBtn','splitBtnCards'].forEach(id=>{
       const el = document.getElementById(id);
       if(el) el.disabled = !canSplit;
