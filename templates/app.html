@@ -224,6 +224,22 @@
     background:var(--panel-2); color:var(--ink); border:2px solid var(--line);
     border-radius:10px; padding:6px 10px; font-family:var(--body); font-weight:700; font-size:0.85rem;
   }
+  .suit-toggle-inline{
+    background:var(--green-bg);
+    color:var(--green-dark);
+    border:2px solid var(--green);
+    border-radius:10px;
+    padding:6px 16px;
+    font-family:var(--body); font-weight:800; font-size:0.85rem;
+    cursor:pointer;
+    min-width:52px;
+  }
+  .suit-toggle-inline.is-off{
+    background:var(--red-bg);
+    color:var(--red-dark);
+    border-color:var(--red);
+  }
+  .suit-toggle-inline:active{transform:translateY(1px);}
 
   /* Hand tabs: Dealer / Player / Seats */
   .hand-tabs-row{
@@ -943,28 +959,7 @@
   body.is-fullscreen #view-stats .stats-dashboard{
     height: calc(100dvh - 16px); /* just breathing room, no rail/nav to account for */
   }
-  .cards-top-controls{
-    position:absolute;
-    top:clamp(8px, 1vw, 16px);
-    right:clamp(8px, 1vw, 16px);
-    z-index:10;
-    display:flex;
-    flex-direction:column;
-    align-items:flex-end;
-    gap:6px;
-  }
-  .cards-top-controls .fullscreen-btn{
-    position:static;
-    top:auto; right:auto;
-  }
-  .suit-toggle-btn.is-off{
-    color:var(--red-dark, #FF8F8F);
-    border-color:var(--red);
-  }
   body.is-fullscreen .fullscreen-btn{
-    background:rgba(35,35,41,0.85);
-  }
-  body.is-fullscreen .suit-toggle-btn{
     background:rgba(35,35,41,0.85);
   }
 
@@ -1067,6 +1062,11 @@
       <option value="6" selected>6 decks</option>
       <option value="8">8 decks</option>
     </select>
+  </div>
+
+  <div class="decks-control">
+    <label for="suitToggleBtn">Track suits</label>
+    <button id="suitToggleBtn" class="suit-toggle-inline" type="button">On</button>
   </div>
 
   <!-- Count tray -->
@@ -1176,14 +1176,9 @@
 
 <!-- ============ CARDS VIEW (fast input only) ============ -->
 <div class="wrap view" id="view-cards" style="display:none;">
-  <div class="cards-top-controls">
-    <button id="fullscreenBtnCards" class="fullscreen-btn" title="Toggle fullscreen table view">
-      <span id="fullscreenBtnCardsIcon">⛶</span><span id="fullscreenBtnCardsLabel">Fullscreen</span>
-    </button>
-    <button id="suitToggleBtnCards" class="fullscreen-btn suit-toggle-btn" title="Toggle suit tracking">
-      <span id="suitToggleIconCards">♠</span><span id="suitToggleLabelCards">Suit: On</span>
-    </button>
-  </div>
+  <button id="fullscreenBtnCards" class="fullscreen-btn" title="Toggle fullscreen table view">
+    <span id="fullscreenBtnCardsIcon">⛶</span><span id="fullscreenBtnCardsLabel">Fullscreen</span>
+  </button>
   <div class="cards-view-inner">
     <div class="hot-shoe-alert" id="hotShoeAlertCards" style="display:none;"></div>
 
@@ -3046,17 +3041,16 @@
   // against the shoe instead), and hides the side-bet numbers rather than show stale
   // or misleading ones once we're no longer tracking exact suits.
   function updateSuitToggleBtn(){
-    const icon = document.getElementById('suitToggleIconCards');
-    const label = document.getElementById('suitToggleLabelCards');
-    const btn = document.getElementById('suitToggleBtnCards');
-    if(icon) icon.textContent = suitTrackingEnabled ? '♠' : '♠';
-    if(label) label.textContent = suitTrackingEnabled ? 'Suit: On' : 'Suit: Off';
-    if(btn) btn.classList.toggle('is-off', !suitTrackingEnabled);
+    const btn = document.getElementById('suitToggleBtn');
+    if(btn){
+      btn.textContent = suitTrackingEnabled ? 'On' : 'Off';
+      btn.classList.toggle('is-off', !suitTrackingEnabled);
+    }
     document.querySelectorAll('.side-bets-panel').forEach(el=>{
       el.style.display = suitTrackingEnabled ? '' : 'none';
     });
   }
-  const suitToggleBtn = document.getElementById('suitToggleBtnCards');
+  const suitToggleBtn = document.getElementById('suitToggleBtn');
   if(suitToggleBtn){
     suitToggleBtn.addEventListener('click', ()=>{
       suitTrackingEnabled = !suitTrackingEnabled;
