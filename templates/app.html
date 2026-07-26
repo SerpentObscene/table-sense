@@ -2864,8 +2864,11 @@
     });
     // Fullscreen monitoring mode makes sense on Stats and Cards — drop out of it only
     // when switching to Home, where a fullscreen kiosk view doesn't apply.
-    if(view === 'home' && getFullscreenElement()){
-      exitFs().catch(()=>{});
+    if(view === 'home' && appChromeHidden){
+      setAppChromeHidden(false);
+      if(!skipNativeFullscreen && getFullscreenElement()){
+        exitFs().catch(()=>{});
+      }
     }
   }
   document.querySelectorAll('.nav-btn').forEach(btn=>{
@@ -2873,9 +2876,22 @@
   });
 
   // ---------- Fullscreen monitoring mode ----------
-  // Safari (especially older macOS/iPadOS, and iOS historically not at all for non-video
-  // elements) has needed webkit-prefixed versions of every part of this API for years —
-  // check all of them rather than assuming the modern unprefixed names exist.
+  // iOS's Fullscreen API for ordinary page elements (not just <video>) is unreliable
+  // regardless of which browser wrapper is used — Chrome on iOS is WebKit underneath too,
+  // same limitation. Merely attempting it there causes interruptions ("stay in full
+  // screen?" prompts) that defeat the point for rapid, uninterrupted tapping. So on iOS,
+  // this never touches the native API at all — it only toggles our own app chrome
+  // (the header + bottom nav) via plain CSS, which nothing can interrupt. On everything
+  // else (confirmed working well on desktop Chrome), the native API is used too, as a
+  // bonus that also hides the browser's own address bar/tab strip.
+  function isIOSDevice(){
+    // Classic iPhone/iPod UA, plus iPadOS 13+, which reports itself as "Macintosh"
+    // unless "Request Desktop Website" is turned off — multi-touch is the tell.
+    return /iPhone|iPod/.test(navigator.userAgent) ||
+      (/Mac/.test(navigator.platform) && navigator.maxTouchPoints > 1);
+  }
+  const skipNativeFullscreen = isIOSDevice();
+
   function getFullscreenElement(){
     return document.fullscreenElement || document.webkitFullscreenElement || document.webkitCurrentFullScreenElement || null;
   }
@@ -2889,46 +2905,50 @@
     if(fn) return fn.call(document);
     return Promise.reject(new Error('not supported'));
   }
-  function isFullscreen(){ return !!getFullscreenElement(); }
+
+  let appChromeHidden = false;
   const FULLSCREEN_BTN_IDS = [
     {btn:'fullscreenBtn', icon:'fullscreenBtnIcon', label:'fullscreenBtnLabel'},
     {btn:'fullscreenBtnCards', icon:'fullscreenBtnCardsIcon', label:'fullscreenBtnCardsLabel'}
   ];
-  function updateFullscreenBtn(){
-    const fs = isFullscreen();
-    document.body.classList.toggle('is-fullscreen', fs);
+  function setAppChromeHidden(hidden){
+    appChromeHidden = hidden;
+    document.body.classList.toggle('is-fullscreen', hidden);
     FULLSCREEN_BTN_IDS.forEach(ids=>{
       const icon = document.getElementById(ids.icon);
       const label = document.getElementById(ids.label);
-      if(icon) icon.textContent = fs ? '⤢' : '⛶';
-      if(label) label.textContent = fs ? 'Exit fullscreen' : 'Fullscreen';
+      if(icon) icon.textContent = hidden ? '⤢' : '⛶';
+      if(label) label.textContent = hidden ? 'Exit fullscreen' : 'Fullscreen';
     });
   }
   FULLSCREEN_BTN_IDS.forEach(ids=>{
     const btn = document.getElementById(ids.btn);
     if(btn){
       btn.addEventListener('click', ()=>{
-        if(!isFullscreen()){
-          requestFs(document.documentElement).catch(()=>{
-            // Fullscreen genuinely isn't available on this browser/device — say so
-            // rather than doing nothing with no explanation.
-            const label = document.getElementById(ids.label);
-            if(label){
-              const original = label.textContent;
-              label.textContent = 'Not supported here';
-              setTimeout(()=>{ label.textContent = original; }, 2200);
-            }
-          });
+        if(!appChromeHidden){
+          setAppChromeHidden(true);
+          if(!skipNativeFullscreen){
+            requestFs(document.documentElement).catch(()=>{});
+          }
         } else {
-          exitFs().catch(()=>{});
+          setAppChromeHidden(false);
+          if(!skipNativeFullscreen && getFullscreenElement()){
+            exitFs().catch(()=>{});
+          }
         }
       });
     }
   });
-  // Keep every button's icon/label correct even if exited via Esc or the browser's own UI —
-  // Safari can fire the webkit-prefixed event name instead of the standard one.
-  document.addEventListener('fullscreenchange', updateFullscreenBtn);
-  document.addEventListener('webkitfullscreenchange', updateFullscreenBtn);
+  // If real browser fullscreen ends on its own (Esc key, OS gesture), bring our own
+  // chrome back too, so the two stay in sync wherever the native API is actually in play.
+  function onNativeFullscreenChange(){
+    if(skipNativeFullscreen) return;
+    if(!getFullscreenElement() && appChromeHidden){
+      setAppChromeHidden(false);
+    }
+  }
+  document.addEventListener('fullscreenchange', onNativeFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onNativeFullscreenChange);
 
   // ---------- Cross-device sync via a real backend (/api/state, Supabase-backed) ----------
   // The server's own write timestamp is the sole authority for "what's newest" — never a
