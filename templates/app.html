@@ -353,8 +353,10 @@
   .hand-tab .status-pill.status-bust{background:var(--red-bg); color:var(--red-dark);}
   .hand-tab .status-pill.status-blackjack{background:var(--green-bg); color:var(--green-dark);}
   .hand-tab .status-pill.status-soft{background:var(--gold-bg); color:var(--gold-dark);}
-  .hand-tab .hole-flag{
-    font-size:0.62rem; color:var(--ink-soft); font-family:var(--body); font-weight:700;
+  .hand-tab .split-flag{
+    font-size:0.55rem; font-weight:800; letter-spacing:0.04em;
+    padding:1px 6px; border-radius:20px; text-transform:uppercase;
+    background:var(--purple, #D89BFF); color:#2A1B3D;
     align-self:center;
   }
   .hand-tab .cards{
@@ -644,10 +646,46 @@
   .pad-row-ace{
     grid-template-columns: 1fr;
     justify-items:center;
+    margin-bottom:0;
   }
   .pad-row-ace button{
     width:calc(25% - 7px); /* match one column's width from the 4-col rows below */
   }
+  .ace-row-flex{
+    display:flex;
+    align-items:stretch;
+    gap:9px;
+    margin-bottom:10px;
+  }
+  .ace-row-flex .pad-row-ace{
+    flex:1;
+  }
+  .turn-btn{
+    flex:0 0 auto;
+    width:20%;
+    border-radius:18px;
+    border:none;
+    font-family:var(--display);
+    font-weight:800;
+    font-size:0.8rem;
+    letter-spacing:0.01em;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center;
+    padding:6px 4px;
+  }
+  .turn-btn:active{transform:translateY(2px);}
+  .check-btn{
+    background:var(--green);
+    color:#0E2600;
+    border-bottom:4px solid var(--green-dark);
+  }
+  .split-btn{
+    background:var(--purple);
+    color:#2A1B3D;
+    border-bottom:4px solid var(--purple-dark, #B27FE8);
+  }
+  .turn-btn:disabled{opacity:0.35; cursor:default; transform:none;}
   .big-suit-pad{gap:9px;}
   .big-suit-pad button{
     padding:20px 0;
@@ -813,7 +851,7 @@
     #view-stats .hot-shoe-alert, #view-stats .insurance-alert{ font-size:clamp(0.74rem, 0.9vw, 0.95rem); padding:clamp(10px, 1.3vw, 18px) clamp(12px, 1.5vw, 20px); }
     #view-stats .insurance-alert .title{ font-size:clamp(0.82rem, 1vw, 1.05rem); }
 
-    #view-stats .stats-grid{ gap:clamp(8px, 1.1vw, 18px); grid-auto-rows:1fr; }
+    #view-stats .stats-grid{ gap:clamp(8px, 1.1vw, 18px); grid-auto-rows:minmax(0, 1fr); min-height:0; }
     #view-stats .stats-card{ padding:clamp(12px, 1.6vw, 26px); display:flex; flex-direction:column; justify-content:center; }
     #view-stats .stats-card-label{ font-size:clamp(0.68rem, 0.85vw, 0.9rem); }
     #view-stats .stats-card-val{ font-size:clamp(1.3rem, 2vw, 2.4rem); }
@@ -826,10 +864,11 @@
 
     #view-stats .odds-grid{
       grid-template-columns: repeat(4, 1fr);
-      grid-auto-rows: 1fr;
+      grid-auto-rows: minmax(0, 1fr);
       align-content:stretch;
       gap:clamp(6px, 0.9vw, 14px);
       flex:1;
+      min-height:0;
       overflow:hidden;
       margin-top:clamp(8px, 1vw, 16px);
     }
@@ -875,10 +914,10 @@
   body.is-fullscreen .bottom-nav{ display:none; }
   body.is-fullscreen{ padding-bottom:0; }
   body.is-fullscreen #view-stats.view{
-    padding-top:clamp(10px, 1.4vw, 22px);
+    padding-top:8px;
   }
   body.is-fullscreen #view-stats .stats-dashboard{
-    height: calc(100dvh - 24px); /* just breathing room, no rail/nav to account for */
+    height: calc(100dvh - 16px); /* just breathing room, no rail/nav to account for */
   }
   body.is-fullscreen .fullscreen-btn{
     background:rgba(35,35,41,0.85);
@@ -1029,9 +1068,6 @@
       </div>
       <div class="hand-tabs" id="handTabs"></div>
     </div>
-    <div id="revealHoleWrap" style="display:none; margin-bottom:10px;">
-      <button id="revealHoleBtn" class="reveal-btn">👁 Dealer flips hole card — tap it in</button>
-    </div>
 
     <div class="section-title" style="margin-top:4px;">Tap rank, then suit</div>
     <div class="pad" id="pad"></div>
@@ -1044,6 +1080,10 @@
     <div class="suit-hint" id="suitHint">Pick a rank above first</div>
 
     <div class="row-actions">
+      <button id="splitBtn" class="turn-btn split-btn" style="flex:1; width:auto;">Split</button>
+      <button id="checkBtn" class="turn-btn check-btn" style="flex:1; width:auto;">Check ✓</button>
+    </div>
+    <div class="row-actions" style="margin-top:8px;">
       <button class="danger" id="undoBtn">↩ Undo last</button>
       <button class="primary" id="newRoundBtn">▶ New round</button>
     </div>
@@ -1100,12 +1140,13 @@
     </div>
 
     <div class="insurance-alert" id="insuranceAlertCards" style="display:none;"></div>
-    <div id="revealHoleWrapCards" style="display:none; margin-bottom:10px;">
-      <button id="revealHoleBtnCards" class="reveal-btn">👁 Dealer flips — tap it in</button>
-    </div>
     <div class="suit-hint big-hint" id="suitHintCards">Pick a rank</div>
     <div class="pad-cards-rows" id="padCards">
+    <div class="ace-row-flex">
+      <button id="splitBtnCards" class="turn-btn split-btn">Split</button>
       <div class="pad big-pad pad-row-ace" id="padCardsRowAce"></div>
+      <button id="checkBtnCards" class="turn-btn check-btn">Check ✓</button>
+    </div>
       <div class="pad big-pad" id="padCardsRow1"></div>
       <div class="pad big-pad" id="padCardsRow2"></div>
       <div class="pad big-pad" id="padCardsRow3"></div>
@@ -1254,26 +1295,32 @@
   let activeHand = 'dealer';
   let pendingRank = null;
   let selectedUpcard = null;
-  let dealerHoleRevealed = false; // true once the dealer's hole card has actually been entered
-  let holeRevealArmed = false;    // true while the next tap should be treated as the dealer's hole card
+  let dealWrapsUsed = 0;         // wrap-arounds allowed during the initial deal (give-1 -> give-2 needs exactly one)
+  let initialDealJumpDone = false; // true once we've jumped from "dealing" to "first player's turn"
 
   function cardKey(rank,suit){ return rank+'|'+suit; }
 
   function handLabel(id){
-    if(id==='dealer') return 'Dealer';
-    if(id==='player') return 'You';
-    return 'Seat '+id.replace('other','');
+    const isSplit = id.endsWith('_2');
+    const baseId = isSplit ? id.slice(0,-2) : id;
+    let base;
+    if(baseId==='dealer') base = 'Dealer';
+    else if(baseId==='player') base = 'You';
+    else base = 'Seat '+baseId.replace('other','');
+    return isSplit ? base+' (2)' : base;
   }
   function handClass(id){
-    if(id==='dealer') return 'dealer';
-    if(id==='player') return 'player';
+    const baseId = id.endsWith('_2') ? id.slice(0,-2) : id;
+    if(baseId==='dealer') return 'dealer';
+    if(baseId==='player') return 'player';
     return 'seat';
   }
   const SEAT_PALETTE = ['#8fae7f','#c97fae','#7fa8c9','#c9975a','#a389d4','#5fbfa0','#b8c95a'];
   function handColor(id){
-    if(id==='dealer') return '#6B9FC0';
-    if(id==='player') return '#c9a15a';
-    const n = parseInt(id.replace('other',''),10);
+    const baseId = id.endsWith('_2') ? id.slice(0,-2) : id;
+    if(baseId==='dealer') return '#6B9FC0';
+    if(baseId==='player') return '#c9a15a';
+    const n = parseInt(baseId.replace('other',''),10);
     return SEAT_PALETTE[(n-1) % SEAT_PALETTE.length];
   }
 
@@ -1328,8 +1375,8 @@
     activeHand = handOrder[0]; // start of a round: first seat, not the dealer
     pendingRank = null;
     selectedUpcard = null;
-    dealerHoleRevealed = false;
-    holeRevealArmed = false;
+    dealWrapsUsed = 0;
+    initialDealJumpDone = false;
     closeSuitPopover();
     buildTabs();
     render();
@@ -1338,16 +1385,17 @@
 
   // Round over, new cards about to be dealt: clear each hand's cards from view,
   // but the cards themselves stay burned from the shoe (no reshuffle) — running count is untouched.
+  // Any split from last round doesn't carry over — a new round starts from the plain seat list.
   function newRound(){
+    handOrder = handOrder.filter(id => !id.endsWith('_2'));
     handOrder.forEach(id=>{ hands[id] = []; });
-    // seen/counts intentionally left alone — those cards are in the discard tray, not back in the shoe.
     activeHand = handOrder[0];
     pendingRank = null;
     selectedUpcard = null;
-    dealerHoleRevealed = false;
-    holeRevealArmed = false;
+    dealWrapsUsed = 0;
+    initialDealJumpDone = false;
     closeSuitPopover();
-    renderTabs();
+    buildTabs();
     render();
     renderHotShoeAlert(checkHotShoe());
     pushState();
@@ -1453,16 +1501,25 @@
 
   // Shared logic for actually placing a card once rank+suit are both known,
   // used by both the inline Home suit-pad and the Cards-view popover.
+  // Auto-advances only while a hand is still getting its first two cards (the initial
+  // deal round) — once a hand has 2+ cards, further taps are hits that stay on that
+  // hand until the Check button explicitly moves play on, same as a real table.
   function commitCard(rank, suit){
-    if(holeRevealArmed && activeHand==='dealer'){
-      addCard(rank, suit, 'dealer', {isHoleReveal:true});
-      // stay armed for another draw unless the dealer's total is now 17+ (they'd stop)
-      const v = handValue(hands.dealer||[]);
-      if(v.status==='bust' || v.total>=17){
-        holeRevealArmed = false;
-      }
-    } else {
-      addCard(rank, suit, activeHand, {advance:true});
+    // Auto-advance is a global "still dealing everyone's initial two cards" phase,
+    // not a per-hand thing — otherwise a freshly-split hand (which starts with just
+    // 1 card, same as a mid-deal hand) would look "still being dealt" and wrongly
+    // auto-advance the moment it's topped up, instead of staying put for Check.
+    const stillDealing = !initialDealJumpDone;
+    addCard(rank, suit, activeHand, {advance: stillDealing});
+    // The moment everyone's initial two cards are down, jump straight to the first
+    // player's turn — otherwise the plain deal sequence would leave us wherever it
+    // linearly ended (always the dealer, since they're dealt last), skipping every
+    // player's chance to hit before the dealer plays.
+    if(stillDealing && allHandsHaveTwoOrMore()){
+      initialDealJumpDone = true;
+      activeHand = handOrder[0];
+      render();
+      pushState();
     }
   }
 
@@ -1521,12 +1578,10 @@
   function renderSuitPad(){
     const homeHint = document.getElementById('suitHint');
     const cardsHint = document.getElementById('suitHintCards');
-    const dealerDone = (activeHand==='dealer' && (hands.dealer||[]).length>=2 && !holeRevealArmed);
-    const dealerWaitingForFlip = (activeHand==='dealer' && (hands.dealer||[]).length===1 && !holeRevealArmed);
-    if(dealerDone || dealerWaitingForFlip){
-      const msg = dealerDone
-        ? "Dealer's hand is settled for this round"
-        : "Dealer's hole card isn't known yet — use Reveal below once it flips";
+    const activeStatus = handValue(hands[activeHand]||[]).status;
+    const isBust = (activeStatus === 'bust');
+    if(isBust){
+      const msg = `${handLabel(activeHand)} busted — tap Check to move on`;
       if(homeHint) homeHint.textContent = msg;
       if(cardsHint) cardsHint.textContent = msg;
       PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button').forEach(b=>b.disabled=true));
@@ -1537,10 +1592,7 @@
 
     // Cards view: always a simple one-line status, independent of pendingRank (popover handles suit).
     if(cardsHint){
-      const drawNum = (hands.dealer||[]).length;
-      cardsHint.textContent = holeRevealArmed
-        ? (drawNum===1 ? "Tap the dealer's hole card rank" : "Dealer draws again — tap a rank")
-        : `Tap a rank for ${handLabel(activeHand)}`;
+      cardsHint.textContent = `Tap a rank for ${handLabel(activeHand)}`;
     }
 
     if(!pendingRank){
@@ -1548,14 +1600,7 @@
       SUIT_PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button').forEach(b=>b.disabled=true));
       return;
     }
-    let msgHtml;
-    if(holeRevealArmed){
-      const drawNum = (hands.dealer||[]).length;
-      const label = drawNum===1 ? 'hole card' : 'dealer draws';
-      msgHtml = `${pendingRank} of… (dealer's <b style="color:${handColor('dealer')}">${label}</b>)`;
-    } else {
-      msgHtml = `${pendingRank} of… (adding to <span style="color:${handColor(activeHand)}">${handLabel(activeHand)}</span>)`;
-    }
+    const msgHtml = `${pendingRank} of… (adding to <span style="color:${handColor(activeHand)}">${handLabel(activeHand)}</span>)`;
     if(homeHint) homeHint.innerHTML = msgHtml;
     SUIT_PAD_IDS.forEach(padId=>{
       document.getElementById(padId)?.querySelectorAll('button').forEach(b=>{
@@ -1637,8 +1682,10 @@
   }
 
   // Places a hand-tab along the "blackjack table" arc: dealer fixed at top-center,
-  // player seats curved below in a bow — the middle seat sits closest to the dealer,
-  // edge seats curve down and out to the sides, echoing a real table's shape.
+  // player seats curved below in a bow whose INSIDE (concave side) faces the dealer —
+  // like a real table, the two end seats sit closest to the dealer's corners, and the
+  // middle seat is the furthest point of the curve. Seat 1 (first in turn order) sits
+  // on the right, the last seat on the left.
   function positionArcTab(tab, id, playerSeatIndex, totalPlayerSeats){
     if(id === 'dealer'){
       tab.style.left = '50%';
@@ -1646,9 +1693,9 @@
       return;
     }
     const t = totalPlayerSeats <= 1 ? 0.5 : playerSeatIndex/(totalPlayerSeats-1);
-    const xPercent = 10 + t*80;
+    const xPercent = 90 - t*80; // seat 1 (t=0) on the right, last seat (t=1) on the left
     const bow = Math.sin(t*Math.PI);
-    const yPercent = 84 - bow*44;
+    const yPercent = 40 + bow*44; // edges near the dealer, middle seat farthest away
     tab.style.left = xPercent+'%';
     tab.style.top = yPercent+'%';
   }
@@ -1819,8 +1866,10 @@
         tab.classList.remove('dragging');
         tab.style.transform = '';
         let targetIndex = 0;
+        // Seat 1 is now on the right and later seats run leftward, so "further along
+        // in turn order" means the pointer has moved LEFT of a seat's original center.
         for(const centerX of originalOtherCenters){
-          if(e.clientX > centerX) targetIndex++;
+          if(e.clientX < centerX) targetIndex++;
         }
         yourSeatPosition = targetIndex + 1;
         rebuildHandOrder();
@@ -1838,10 +1887,43 @@
     tab.addEventListener('pointerdown', onPointerDown);
   }
 
+  // Check: "I'm done with this hand" — moves play to the next hand in turn order.
+  function checkHand(){
+    advanceToNextHand();
+    render();
+    pushState();
+  }
+
+  // Split: turns the active hand's matching pair into two independent hands, inserted
+  // right after each other in turn order — so a bust on one can never combine with the
+  // other's total, exactly as if a second player had joined that seat.
+  function splitActiveHand(){
+    const cards = hands[activeHand] || [];
+    if(cards.length !== 2 || cards[0].rank !== cards[1].rank) return;
+    if(activeHand.endsWith('_2')) return; // keep it to one split per seat
+    const newId = activeHand + '_2';
+    if(hands[newId]) return;
+    hands[activeHand] = [cards[0]];
+    hands[newId] = [cards[1]];
+    const idx = handOrder.indexOf(activeHand);
+    handOrder.splice(idx+1, 0, newId);
+    buildTabs();
+    render();
+    pushState();
+  }
+
+  function updateTurnButtons(){
+    const cards = hands[activeHand] || [];
+    const canSplit = cards.length===2 && cards[0].rank===cards[1].rank && !activeHand.endsWith('_2') && !hands[activeHand+'_2'];
+    ['splitBtn','splitBtnCards'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.disabled = !canSplit;
+    });
+  }
+
   function clearHand(id){
     returnHandToShoe(id);
     hands[id] = [];
-    if(id==='dealer'){ dealerHoleRevealed = false; holeRevealArmed = false; }
     render();
     pushState();
   }
@@ -1858,48 +1940,24 @@
 
   const STATUS_LABEL = {empty:'', normal:'', soft:'soft', blackjack:'BJ!', bust:'BUST'};
   function renderTotals(){
-
     document.querySelectorAll('[data-total]').forEach(el=>{
       const id = el.dataset.total;
       const cards = hands[id] || [];
-      const showHiddenFlag = (id==='dealer' && dealerAwaitingHole());
-      const hiddenNote = showHiddenFlag ? '<span class="hole-flag">🂠 face-down</span>' : '';
+      const isSplitHand = id.endsWith('_2') || !!hands[id+'_2'];
+      const splitNote = isSplitHand ? '<span class="split-flag">SPLIT</span>' : '';
       if(!cards || cards.length===0){
-        el.innerHTML = '';
+        el.innerHTML = splitNote;
         return;
       }
       const v = handValue(cards);
       const label = STATUS_LABEL[v.status];
-      el.innerHTML = `<span class="total-num status-${v.status}">${v.total}</span>${label?`<span class="status-pill status-${v.status}">${label}</span>`:''}${hiddenNote}`;
+      el.innerHTML = `<span class="total-num status-${v.status}">${v.total}</span>${label?`<span class="status-pill status-${v.status}">${label}</span>`:''}${splitNote}`;
     });
-    ['revealHoleWrap','revealHoleWrapCards'].forEach(id=>{
-      const revealWrap = document.getElementById(id);
-      if(revealWrap) revealWrap.style.display = dealerAwaitingHole() ? 'block' : 'none';
-    });
-  }
-
-  // Switches into "enter the dealer's hole card" mode: makes dealer the active hand
-  // and arms addCard() to accept this one specific card via the isHoleReveal path.
-  function startHoleReveal(){
-    activeHand = 'dealer';
-    holeRevealArmed = true;
-    render();
-    pushState();
   }
 
   function handToChips(cards){
     if(!cards || cards.length===0) return '—';
     return cards.map(c=>`<span class="card-chip ${RED_SUITS.has(c.suit)?'red':''}">${c.rank}${c.suit}</span>`).join('');
-  }
-
-  // True once the dealer's upcard is down but the hole card hasn't been entered yet.
-  function dealerAwaitingHole(){
-    return (hands.dealer||[]).length === 1 && !holeRevealArmed;
-  }
-  function dealerStillDrawing(){
-    if(!holeRevealArmed) return false;
-    const v = handValue(hands.dealer||[]);
-    return v.status!=='bust' && v.total<17;
   }
 
   // Best blackjack total for a set of visible cards, handling soft aces (11 -> 1 as needed).
@@ -1946,18 +2004,10 @@
 
   function addCard(rank, suit, who, opts){
     if(counts[cardKey(rank,suit)] <= 0) return;
-    // Guard: the dealer's hole card must come in through revealHoleCard(), not the normal pad,
-    // since in a real round you don't know it yet when it would normally be your "turn" to log it.
-    if(who === 'dealer' && (hands.dealer||[]).length >= 1 && !(opts && opts.isHoleReveal)){
-      return;
-    }
     counts[cardKey(rank,suit)] -= 1;
     seen.push({rank,suit,who,auto:!!(opts&&opts.autoSuit)});
     if(!hands[who]) hands[who]=[];
     hands[who].push({rank,suit});
-    if(who==='dealer' && (opts&&opts.isHoleReveal)){
-      dealerHoleRevealed = true;
-    }
     if(opts && opts.advance){
       advanceToNextHand();
     }
@@ -1965,20 +2015,25 @@
     pushState();
   }
 
-  // Move active hand to the next seat in table order, skipping the dealer's slot
-  // once their upcard is already down (their hole card is entered separately via Reveal).
+  // Move active hand to the next seat in table order. Wrapping from the dealer back to
+  // seat 1 is only allowed ONCE per round — that's the give-1 -> give-2 transition while
+  // dealing everyone's first two cards. After that, further Check presses on the dealer
+  // just stay put; "New round" is what starts the next lap, not another automatic wrap.
   function advanceToNextHand(){
     const idx = handOrder.indexOf(activeHand);
     if(idx === -1) return;
-    let nextIdx = (idx+1) % handOrder.length;
-    let nextId = handOrder[nextIdx];
-    if(nextId === 'dealer' && (hands.dealer||[]).length >= 1){
-      // dealer already has their upcard down for this round — skip past them,
-      // their hole card is only entered when you hit Reveal.
-      nextIdx = (nextIdx+1) % handOrder.length;
-      nextId = handOrder[nextIdx];
+    if(idx === handOrder.length - 1){
+      if(dealWrapsUsed < 1){
+        dealWrapsUsed++;
+        activeHand = handOrder[0];
+      }
+      return;
     }
-    activeHand = nextId;
+    activeHand = handOrder[idx+1];
+  }
+
+  function allHandsHaveTwoOrMore(){
+    return handOrder.length>0 && handOrder.every(id => (hands[id]||[]).length >= 2);
   }
 
   function undo(){
@@ -1989,11 +2044,6 @@
     if(arr){
       const i = arr.map(c=>c.rank+c.suit).lastIndexOf(last.rank+last.suit);
       if(i>=0) arr.splice(i,1);
-    }
-    // if the card we just undid was the dealer's hole card, re-arm the reveal flow
-    if(last.who==='dealer' && (hands.dealer||[]).length<=1){
-      dealerHoleRevealed = false;
-      holeRevealArmed = false;
     }
     render();
     pushState();
@@ -2112,7 +2162,8 @@
     const els = ['insuranceAlert','insuranceAlertCards','insuranceAlertStats'].map(id=>document.getElementById(id)).filter(Boolean);
     const dealerCards = hands.dealer || [];
     const upcardIsAce = dealerCards.length>=1 && dealerCards[0].rank === 'A';
-    if(!upcardIsAce || !dealerAwaitingHole()){
+    const holeStillUnknown = dealerCards.length === 1;
+    if(!upcardIsAce || !holeStillUnknown){
       els.forEach(el=>el.style.display='none');
       return;
     }
@@ -2521,6 +2572,7 @@
     renderTabs();
     renderPad();
     renderSuitPad();
+    updateTurnButtons();
 
     renderOddsGrid('oddsGrid', tot);
     renderOddsGrid('oddsGridStats', tot);
@@ -2596,12 +2648,14 @@
   document.getElementById('addSeatBtnCards').addEventListener('click', addSeat);
   document.getElementById('removeSeatBtn').addEventListener('click', removeSeat);
   document.getElementById('removeSeatBtnCards').addEventListener('click', removeSeat);
+  document.getElementById('checkBtn').addEventListener('click', checkHand);
+  document.getElementById('checkBtnCards').addEventListener('click', checkHand);
+  document.getElementById('splitBtn').addEventListener('click', splitActiveHand);
+  document.getElementById('splitBtnCards').addEventListener('click', splitActiveHand);
   document.getElementById('undoBtn').addEventListener('click', undo);
   document.getElementById('undoBtnCards').addEventListener('click', undo);
   document.getElementById('newRoundBtn').addEventListener('click', newRound);
   document.getElementById('newRoundBtnCards').addEventListener('click', newRound);
-  document.getElementById('revealHoleBtn').addEventListener('click', startHoleReveal);
-  document.getElementById('revealHoleBtnCards').addEventListener('click', startHoleReveal);
   const resetButtons = [document.getElementById('resetBtn'), document.getElementById('resetBtnCards')].filter(Boolean);
   const RESET_LABEL = '⟲ New shoe';
   const RESET_CONFIRM_LABEL = '⚠ Tap again to confirm';
@@ -2706,7 +2760,7 @@
     return {
       deckCount, otherPlayerCount, yourSeatPosition,
       seen, counts, hands, handOrder, activeHand,
-      dealerHoleRevealed, holeRevealArmed, selectedUpcard21
+      selectedUpcard21
     };
   }
 
@@ -2719,8 +2773,6 @@
     hands = s.hands;
     handOrder = s.handOrder;
     activeHand = s.activeHand;
-    dealerHoleRevealed = s.dealerHoleRevealed;
-    holeRevealArmed = s.holeRevealArmed;
     selectedUpcard21 = s.selectedUpcard21;
     // reflect deck/seat controls in the UI
     const dc = document.getElementById('deckCount'); if(dc) dc.value = String(deckCount);
