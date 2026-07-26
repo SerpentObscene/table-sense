@@ -2864,8 +2864,8 @@
     });
     // Fullscreen monitoring mode makes sense on Stats and Cards — drop out of it only
     // when switching to Home, where a fullscreen kiosk view doesn't apply.
-    if(view === 'home' && document.fullscreenElement){
-      document.exitFullscreen().catch(()=>{});
+    if(view === 'home' && getFullscreenElement()){
+      exitFs().catch(()=>{});
     }
   }
   document.querySelectorAll('.nav-btn').forEach(btn=>{
@@ -2873,7 +2873,23 @@
   });
 
   // ---------- Fullscreen monitoring mode ----------
-  function isFullscreen(){ return !!document.fullscreenElement; }
+  // Safari (especially older macOS/iPadOS, and iOS historically not at all for non-video
+  // elements) has needed webkit-prefixed versions of every part of this API for years —
+  // check all of them rather than assuming the modern unprefixed names exist.
+  function getFullscreenElement(){
+    return document.fullscreenElement || document.webkitFullscreenElement || document.webkitCurrentFullScreenElement || null;
+  }
+  function requestFs(el){
+    const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen;
+    if(fn) return fn.call(el);
+    return Promise.reject(new Error('not supported'));
+  }
+  function exitFs(){
+    const fn = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen;
+    if(fn) return fn.call(document);
+    return Promise.reject(new Error('not supported'));
+  }
+  function isFullscreen(){ return !!getFullscreenElement(); }
   const FULLSCREEN_BTN_IDS = [
     {btn:'fullscreenBtn', icon:'fullscreenBtnIcon', label:'fullscreenBtnLabel'},
     {btn:'fullscreenBtnCards', icon:'fullscreenBtnCardsIcon', label:'fullscreenBtnCardsLabel'}
@@ -2893,15 +2909,26 @@
     if(btn){
       btn.addEventListener('click', ()=>{
         if(!isFullscreen()){
-          document.documentElement.requestFullscreen().catch(()=>{});
+          requestFs(document.documentElement).catch(()=>{
+            // Fullscreen genuinely isn't available on this browser/device — say so
+            // rather than doing nothing with no explanation.
+            const label = document.getElementById(ids.label);
+            if(label){
+              const original = label.textContent;
+              label.textContent = 'Not supported here';
+              setTimeout(()=>{ label.textContent = original; }, 2200);
+            }
+          });
         } else {
-          document.exitFullscreen().catch(()=>{});
+          exitFs().catch(()=>{});
         }
       });
     }
   });
-  // Keep every button's icon/label correct even if exited via Esc or the browser's own UI.
+  // Keep every button's icon/label correct even if exited via Esc or the browser's own UI —
+  // Safari can fire the webkit-prefixed event name instead of the standard one.
   document.addEventListener('fullscreenchange', updateFullscreenBtn);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenBtn);
 
   // ---------- Cross-device sync via a real backend (/api/state, Supabase-backed) ----------
   // The server's own write timestamp is the sole authority for "what's newest" — never a
