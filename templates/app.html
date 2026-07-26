@@ -378,6 +378,11 @@
     display:inline-block;
   }
   .hand-tab .card-chip.red{color:var(--card-red); background:var(--ink); padding:1px 5px;}
+  .hand-tab .card-chip.hidden-chip{
+    background:var(--panel-2);
+    color:var(--ink-soft);
+    border:1px dashed var(--line);
+  }
   .hand-tab .clear-x{
     color:var(--ink-soft); font-size:0.8rem; cursor:pointer; font-weight:800;
     padding:0 2px;
@@ -693,6 +698,14 @@
     border-bottom:4px solid var(--purple-dark, #B27FE8);
   }
   .turn-btn:disabled{opacity:0.35; cursor:default; transform:none;}
+  .turn-btn-wide{
+    flex:1;
+    width:auto;
+    aspect-ratio:auto;
+    padding:13px;
+    font-size:0.92rem;
+    border-radius:14px;
+  }
   .big-suit-pad{gap:9px;}
   .big-suit-pad button{
     padding:20px 0;
@@ -1094,8 +1107,8 @@
     <div class="suit-hint" id="suitHint">Pick a rank above first</div>
 
     <div class="row-actions">
-      <button id="splitBtn" class="turn-btn split-btn" style="flex:1; width:auto;">Split</button>
-      <button id="checkBtn" class="turn-btn check-btn" style="flex:1; width:auto;">Check ✓</button>
+      <button id="splitBtn" class="turn-btn turn-btn-wide split-btn">Split</button>
+      <button id="checkBtn" class="turn-btn turn-btn-wide check-btn">Check ✓</button>
     </div>
     <div class="row-actions" style="margin-top:8px;">
       <button class="danger" id="undoBtn">↩ Undo last</button>
@@ -1311,6 +1324,7 @@
   let selectedUpcard = null;
   let dealWrapsUsed = 0;         // wrap-arounds allowed during the initial deal (give-1 -> give-2 needs exactly one)
   let initialDealJumpDone = false; // true once we've jumped from "dealing" to "first player's turn"
+  let unknownCardsRemoved = 0;   // cards pulled from the shoe whose identity isn't known yet (dealer's hole card)
 
   function cardKey(rank,suit){ return rank+'|'+suit; }
 
@@ -1370,7 +1384,11 @@
   function returnHandToShoe(id){
     const arr = hands[id] || [];
     arr.forEach(c=>{
-      counts[cardKey(c.rank,c.suit)] += 1;
+      if(c.hidden){
+        unknownCardsRemoved = Math.max(0, unknownCardsRemoved - 1);
+      } else {
+        counts[cardKey(c.rank,c.suit)] += 1;
+      }
     });
     seen = seen.filter(s=> s.who !== id);
   }
@@ -1391,6 +1409,7 @@
     selectedUpcard = null;
     dealWrapsUsed = 0;
     initialDealJumpDone = false;
+    unknownCardsRemoved = 0;
     closeSuitPopover();
     buildTabs();
     render();
@@ -1408,6 +1427,7 @@
     selectedUpcard = null;
     dealWrapsUsed = 0;
     initialDealJumpDone = false;
+    unknownCardsRemoved = 0; // safety net — normally already back to 0 once the hole card was revealed
     closeSuitPopover();
     buildTabs();
     render();
@@ -1429,7 +1449,7 @@
   }
 
   function totalRemaining(){
-    return Object.values(counts).reduce((a,b)=>a+b,0);
+    return Object.values(counts).reduce((a,b)=>a+b,0) - unknownCardsRemoved;
   }
   function rankRemaining(r){
     let t=0; SUITS.forEach(s=> t+=counts[cardKey(r,s)]);
@@ -1515,26 +1535,45 @@
 
   // Shared logic for actually placing a card once rank+suit are both known,
   // used by both the inline Home suit-pad and the Cards-view popover.
-  // Auto-advances only while a hand is still getting its first two cards (the initial
-  // deal round) — once a hand has 2+ cards, further taps are hits that stay on that
-  // hand until the Check button explicitly moves play on, same as a real table.
+  // Auto-advances only while everyone's initial two cards are still being dealt — once
+  // that's done, further taps are hits that stay on the active hand until Check moves
+  // play on, same as a real table. A bust ends a hand's turn immediately either way.
   function commitCard(rank, suit){
-    // Auto-advance is a global "still dealing everyone's initial two cards" phase,
-    // not a per-hand thing — otherwise a freshly-split hand (which starts with just
-    // 1 card, same as a mid-deal hand) would look "still being dealt" and wrongly
-    // auto-advance the moment it's topped up, instead of staying put for Check.
+    // If the dealer's hole card is still face-down, this tap reveals it rather than
+    // adding a brand new third card.
+    if(activeHand === 'dealer'){
+      const dealerHand = hands.dealer || [];
+      const hiddenIdx = dealerHand.findIndex(c => c.hidden);
+      if(hiddenIdx !== -1){
+        revealDealerHoleCard(rank, suit, hiddenIdx);
+        return;
+      }
+    }
+
     const stillDealing = !initialDealJumpDone;
     addCard(rank, suit, activeHand, {advance: stillDealing});
-    // The moment everyone's initial two cards are down, jump straight to the first
-    // player's turn — otherwise the plain deal sequence would leave us wherever it
-    // linearly ended (always the dealer, since they're dealt last), skipping every
-    // player's chance to hit before the dealer plays.
-    if(stillDealing && allHandsHaveTwoOrMore()){
-      initialDealJumpDone = true;
-      activeHand = handOrder[0];
+
+    // A bust can only happen with 3+ cards, so this never fires during the initial
+    // deal — but once it does happen, move on immediately, no Check needed.
+    const v = handValue(hands[activeHand]||[]);
+    if(v.status === 'bust'){
+      advanceToNextHand();
       render();
       pushState();
     }
+  }
+
+  // Turns the dealer's hidden hole card into the real, known card: charges it against
+  // the shoe now that we actually know what it is, and drops it from the "unknown"
+  // count that was keeping the odds honest while it was still face-down.
+  function revealDealerHoleCard(rank, suit, hiddenIdx){
+    if(counts[cardKey(rank,suit)] <= 0) return;
+    counts[cardKey(rank,suit)] -= 1;
+    hands.dealer[hiddenIdx] = {rank, suit};
+    seen.push({rank, suit, who:'dealer', revealed:true});
+    unknownCardsRemoved = Math.max(0, unknownCardsRemoved - 1);
+    render();
+    pushState();
   }
 
   // ---------- Cards-view suit popover ----------
@@ -1592,10 +1631,13 @@
   function renderSuitPad(){
     const homeHint = document.getElementById('suitHint');
     const cardsHint = document.getElementById('suitHintCards');
-    const activeStatus = handValue(hands[activeHand]||[]).status;
-    const isBust = (activeStatus === 'bust');
-    if(isBust){
-      const msg = `${handLabel(activeHand)} busted — tap Check to move on`;
+    const activeValue = handValue(hands[activeHand]||[]);
+    const isBust = (activeValue.status === 'bust');
+    const dealerSettled = (activeHand==='dealer' && activeValue.status!=='hidden' && activeValue.status!=='empty' && activeValue.total>=17);
+    if(isBust || dealerSettled){
+      const msg = isBust
+        ? (activeHand==='dealer' ? 'Dealer busted — round over' : `${handLabel(activeHand)} busted — moving on`)
+        : `Dealer stands at ${activeValue.total} — round over`;
       if(homeHint) homeHint.textContent = msg;
       if(cardsHint) cardsHint.textContent = msg;
       PAD_IDS.forEach(id=>document.getElementById(id)?.querySelectorAll('button').forEach(b=>b.disabled=true));
@@ -1952,7 +1994,7 @@
     renderTotals();
   }
 
-  const STATUS_LABEL = {empty:'', normal:'', soft:'soft', blackjack:'BJ!', bust:'BUST'};
+  const STATUS_LABEL = {empty:'', normal:'', soft:'soft', blackjack:'BJ!', bust:'BUST', hidden:''};
   function renderTotals(){
     document.querySelectorAll('[data-total]').forEach(el=>{
       const id = el.dataset.total;
@@ -1965,19 +2007,30 @@
       }
       const v = handValue(cards);
       const label = STATUS_LABEL[v.status];
-      el.innerHTML = `<span class="total-num status-${v.status}">${v.total}</span>${label?`<span class="status-pill status-${v.status}">${label}</span>`:''}${splitNote}`;
+      const totalText = v.status==='hidden' ? v.total+'+?' : v.total;
+      el.innerHTML = `<span class="total-num status-${v.status}">${totalText}</span>${label?`<span class="status-pill status-${v.status}">${label}</span>`:''}${splitNote}`;
     });
   }
 
   function handToChips(cards){
     if(!cards || cards.length===0) return '—';
-    return cards.map(c=>`<span class="card-chip ${RED_SUITS.has(c.suit)?'red':''}">${c.rank}${c.suit}</span>`).join('');
+    return cards.map(c=>{
+      if(c.hidden) return '<span class="card-chip hidden-chip">🂠</span>';
+      return `<span class="card-chip ${RED_SUITS.has(c.suit)?'red':''}">${c.rank}${c.suit}</span>`;
+    }).join('');
   }
 
   // Best blackjack total for a set of visible cards, handling soft aces (11 -> 1 as needed).
-  // Returns {total, soft, status} where status is 'empty' | 'normal' | 'soft' | 'blackjack' | 'bust'.
+  // Returns {total, soft, status} where status is 'empty' | 'normal' | 'soft' | 'blackjack' | 'bust' | 'hidden'.
+  // 'hidden' means the hand includes a face-down card — total reflects only the known
+  // cards, since the real total genuinely isn't known yet.
   function handValue(cards){
     if(!cards || cards.length===0) return {total:0, soft:false, status:'empty'};
+    if(cards.some(c=>c.hidden)){
+      const known = cards.filter(c=>!c.hidden);
+      const partial = handValue(known);
+      return {total:partial.total, soft:partial.soft, status:'hidden'};
+    }
     let total = 0, aces = 0;
     cards.forEach(c=>{
       total += RANK_VALUE[c.rank];
@@ -2044,15 +2097,60 @@
       return;
     }
     activeHand = handOrder[idx+1];
+    // Landing on the dealer with exactly their upcard already down, mid-deal, means this
+    // would be their hole card — which you don't actually know at a real table. Auto-place
+    // a hidden card (still costs a real card from the shoe for odds purposes) and go
+    // straight to the first player's turn — no tap, nothing to wait on.
+    if(activeHand === 'dealer' && !initialDealJumpDone && (hands.dealer||[]).length === 1){
+      insertHiddenDealerCard();
+      initialDealJumpDone = true;
+      activeHand = handOrder[0];
+    }
   }
 
-  function allHandsHaveTwoOrMore(){
-    return handOrder.length>0 && handOrder.every(id => (hands[id]||[]).length >= 2);
+  // Places an unknown/hidden card in the dealer's hand — a real card leaves the shoe
+  // (so total-remaining odds correctly reflect one fewer card out there), but we don't
+  // know which specific rank or suit, so no individual count is touched.
+  function insertHiddenDealerCard(){
+    if(!hands.dealer) hands.dealer = [];
+    hands.dealer.push({rank:'?', suit:'?', hidden:true});
+    seen.push({rank:'?', suit:'?', who:'dealer', hidden:true});
+    unknownCardsRemoved++;
   }
 
   function undo(){
     const last = seen.pop();
     if(!last) return;
+
+    if(last.hidden){
+      // Undo the auto-inserted hidden hole card — remove the placeholder; the shoe
+      // never had any specific rank charged for it in the first place.
+      const arr = hands[last.who];
+      if(arr){
+        const i = arr.findIndex(c=>c.hidden);
+        if(i>=0) arr.splice(i,1);
+      }
+      unknownCardsRemoved = Math.max(0, unknownCardsRemoved - 1);
+      render();
+      pushState();
+      return;
+    }
+
+    if(last.revealed){
+      // Undo revealing the hole card — give the shoe that specific card back, and
+      // put the hidden placeholder back in its slot instead of removing it outright.
+      counts[cardKey(last.rank,last.suit)] += 1;
+      const arr = hands[last.who];
+      if(arr){
+        const i = arr.map(c=>c.rank+c.suit).lastIndexOf(last.rank+last.suit);
+        if(i>=0) arr[i] = {rank:'?', suit:'?', hidden:true};
+      }
+      unknownCardsRemoved++;
+      render();
+      pushState();
+      return;
+    }
+
     counts[cardKey(last.rank,last.suit)] += 1;
     const arr = hands[last.who];
     if(arr){
@@ -2176,7 +2274,7 @@
     const els = ['insuranceAlert','insuranceAlertCards','insuranceAlertStats'].map(id=>document.getElementById(id)).filter(Boolean);
     const dealerCards = hands.dealer || [];
     const upcardIsAce = dealerCards.length>=1 && dealerCards[0].rank === 'A';
-    const holeStillUnknown = dealerCards.length === 1;
+    const holeStillUnknown = dealerCards.length === 1 || (dealerCards[1] && dealerCards[1].hidden);
     if(!upcardIsAce || !holeStillUnknown){
       els.forEach(el=>el.style.display='none');
       return;
