@@ -414,6 +414,17 @@
     color:var(--ink-soft); font-size:0.8rem; cursor:pointer; font-weight:800;
     padding:0 2px;
   }
+  .hand-tab .mine-toggle{
+    color:var(--ink-soft);
+    opacity:0.4;
+    font-size:0.72rem;
+    cursor:pointer;
+    padding:0 2px;
+  }
+  .hand-tab .mine-toggle.is-mine{
+    color:var(--gold);
+    opacity:1;
+  }
   .hand-tab.player{ cursor:grab; touch-action:none; position:relative; }
   .hand-tab.player:active{ cursor:grabbing; }
   .hand-tab.dragging{
@@ -1446,6 +1457,8 @@
   let dealWrapsUsed = 0;         // wrap-arounds allowed during the initial deal (give-1 -> give-2 needs exactly one)
   let initialDealJumpDone = false; // true once we've jumped from "dealing" to "first player's turn"
   let unknownCardsRemoved = 0;   // cards pulled from the shoe whose identity isn't known yet (dealer's hole card)
+  let seatTablePosition = {};    // handId -> 1-indexed true table position, for labeling (internal ids like other2 skip the seat you're in)
+  let mySeats = new Set(['player']); // which hand ids are "yours" — normally just 'player', but you can mark extra seats to track playing multiple hands at once
   let suitTrackingEnabled = true; // when off, tapping a rank places the card immediately with an auto-picked suit
 
   function cardKey(rank,suit){ return rank+'|'+suit; }
@@ -1455,22 +1468,22 @@
     const baseId = isSplit ? id.slice(0,-2) : id;
     let base;
     if(baseId==='dealer') base = 'Dealer';
-    else if(baseId==='player') base = 'You';
-    else base = 'Seat '+baseId.replace('other','');
+    else if(mySeats.has(baseId)) base = (mySeats.size>1 ? 'You · Seat '+seatTablePosition[baseId] : 'You');
+    else base = 'Seat '+(seatTablePosition[baseId]||'');
     return isSplit ? base+' (2)' : base;
   }
   function handClass(id){
     const baseId = id.endsWith('_2') ? id.slice(0,-2) : id;
     if(baseId==='dealer') return 'dealer';
-    if(baseId==='player') return 'player';
+    if(mySeats.has(baseId)) return 'player';
     return 'seat';
   }
   const SEAT_PALETTE = ['#8fae7f','#c97fae','#7fa8c9','#c9975a','#a389d4','#5fbfa0','#b8c95a'];
   function handColor(id){
     const baseId = id.endsWith('_2') ? id.slice(0,-2) : id;
     if(baseId==='dealer') return '#6B9FC0';
-    if(baseId==='player') return '#c9a15a';
-    const n = parseInt(baseId.replace('other',''),10);
+    if(mySeats.has(baseId)) return '#c9a15a';
+    const n = seatTablePosition[baseId] || 1;
     return SEAT_PALETTE[(n-1) % SEAT_PALETTE.length];
   }
 
@@ -1481,12 +1494,15 @@
     yourSeatPosition = Math.max(1, Math.min(yourSeatPosition, totalPlayerSeats));
 
     const seats = [];
+    seatTablePosition = {};
     let otherIdx = 1;
     for(let pos=1; pos<=totalPlayerSeats; pos++){
       if(pos === yourSeatPosition){
         seats.push('player');
+        seatTablePosition['player'] = pos;
       } else {
         seats.push('other'+otherIdx);
+        seatTablePosition['other'+otherIdx] = pos;
         otherIdx++;
       }
     }
@@ -1497,6 +1513,7 @@
       if(!handOrder.includes(id)){
         returnHandToShoe(id);
         delete hands[id];
+        mySeats.delete(id);
       }
     });
     handOrder.forEach(id=>{ if(!hands[id]) hands[id]=[]; });
@@ -1890,7 +1907,11 @@
         tab.dataset.hand = id;
         tab.style.setProperty('--hand-color', handColor(id));
         const clearChip = readOnly ? '' : `<span class="clear-x" data-clear="${id}">✕</span>`;
-        tab.innerHTML = `<div class="who">${handLabel(id)}${clearChip}</div>
+        const showMineToggle = !readOnly && !isSplitChild && id !== 'dealer' && id !== 'player';
+        const mineToggleHtml = showMineToggle
+          ? `<span class="mine-toggle ${mySeats.has(id)?'is-mine':''}" data-mine-toggle="${id}" title="Mark this seat as also yours">★</span>`
+          : '';
+        tab.innerHTML = `<div class="who">${handLabel(id)}${mineToggleHtml}${clearChip}</div>
           <div class="total-row" data-total="${id}"></div>
           <div class="cards" data-display="${id}">${handToChips(hands[id]||[])}</div>`;
         if(isArc){
@@ -1915,12 +1936,22 @@
           });
         } else {
           tab.addEventListener('click', (e)=>{
-            if(e.target.classList.contains('clear-x')) return;
+            if(e.target.classList.contains('clear-x') || e.target.classList.contains('mine-toggle')) return;
             activeHand = id;
             renderTabs();
             renderSuitPad();
             pushState();
           });
+          const mineToggle = tab.querySelector('.mine-toggle');
+          if(mineToggle){
+            mineToggle.addEventListener('click', (e)=>{
+              e.stopPropagation();
+              if(mySeats.has(id)) mySeats.delete(id); else mySeats.add(id);
+              buildTabs();
+              render();
+              pushState();
+            });
+          }
           tab.querySelector('.clear-x').addEventListener('click', (e)=>{
             e.stopPropagation();
             if(handClass(id) === 'seat'){
@@ -1979,7 +2010,7 @@
       const el = document.getElementById(id);
       if(el) el.textContent = otherPlayerCount;
     });
-    const atMax = (otherPlayerCount >= 7);
+    const atMax = (otherPlayerCount >= 6);
     const atMin = (otherPlayerCount <= 0);
     ['addSeatBtn','addSeatBtnCards'].forEach(id=>{
       const el = document.getElementById(id);
@@ -2998,7 +3029,7 @@
     pushState();
   });
   function addSeat(){
-    if(otherPlayerCount >= 7) return;
+    if(otherPlayerCount >= 6) return;
     otherPlayerCount++;
     rebuildHandOrder();
     buildTabs();
@@ -3201,7 +3232,8 @@
     return {
       deckCount, otherPlayerCount, yourSeatPosition,
       seen, counts, hands, handOrder, activeHand,
-      selectedUpcard21, suitTrackingEnabled
+      selectedUpcard21, suitTrackingEnabled,
+      mySeats: [...mySeats], seatTablePosition
     };
   }
 
@@ -3216,6 +3248,8 @@
     activeHand = s.activeHand;
     selectedUpcard21 = s.selectedUpcard21;
     if(typeof s.suitTrackingEnabled === 'boolean') suitTrackingEnabled = s.suitTrackingEnabled;
+    if(Array.isArray(s.mySeats)) mySeats = new Set(s.mySeats);
+    if(s.seatTablePosition) seatTablePosition = s.seatTablePosition;
     // reflect deck/seat controls in the UI
     const dc = document.getElementById('deckCount'); if(dc) dc.value = String(deckCount);
     updateSuitToggleBtn();
