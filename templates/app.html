@@ -664,7 +664,7 @@
     min-height:1.3em;
   }
   .big-pad{
-    grid-template-columns:repeat(4, 1fr);
+    grid-template-columns:repeat(4, minmax(0, 1fr));
     gap:9px;
     margin-bottom:10px;
   }
@@ -675,31 +675,10 @@
   }
   .big-pad button .tag{font-size:0.64rem;}
   .big-pad button .remain{font-size:0.62rem;}
-  .pad-row-ace{
-    display:flex;
-    margin-bottom:0;
-  }
-  .pad-row-ace button{
-    width:100%;
-    font-size:1.7rem;
-    border-radius:18px;
-    aspect-ratio:1/1.05;
-  }
-  .ace-row-flex{
-    display:flex;
-    align-items:stretch;
-    justify-content:center;
-    gap:9px;
-    margin-bottom:10px;
-  }
-  .ace-row-flex > *{
-    /* Same width as a single column in the 4-col rows below (gap 9px, 3 gaps per row) —
-       fixed to the full row's width, not stretched to fill whatever's left in this row,
-       so Split/Ace/Check always come out exactly rank-button-sized regardless of how
-       many things share this particular row. */
-    flex: 0 0 calc((100% - 27px) / 4);
-  }
+  .pad-rank-slot{ display:contents; } /* lets its button act as a direct grid child, same as any other rank cell */
+  .pad-empty-slot{ /* intentionally blank — just holds its column */ }
   .turn-btn{
+    width:100%;
     border-radius:18px;
     aspect-ratio:1/1.05;
     border:none;
@@ -1129,19 +1108,17 @@
     gap:clamp(4px, 1vh, 9px);
     min-height:0;
   }
-  body.is-fullscreen #view-cards .pad-cards-rows .pad:not(.pad-row-ace),
-  body.is-fullscreen #view-cards .ace-row-flex{
+  body.is-fullscreen #view-cards .pad-cards-rows .pad{
     margin-bottom:0;
     flex:1;
     min-height:0;
   }
-  body.is-fullscreen #view-cards .pad-cards-rows .pad button,
-  body.is-fullscreen #view-cards .ace-row-flex .pad-row-ace button{
+  body.is-fullscreen #view-cards .pad-cards-rows .pad button:not(.turn-btn){
     aspect-ratio:auto;
     height:100%;
     font-size:clamp(1.1rem, 3vh, 1.6rem);
   }
-  body.is-fullscreen #view-cards .ace-row-flex .turn-btn{
+  body.is-fullscreen #view-cards .pad-cards-rows .turn-btn{
     aspect-ratio:auto;
     height:100%;
     font-size:clamp(0.6rem, 1.6vh, 0.85rem);
@@ -1311,11 +1288,12 @@
     <div class="insurance-alert" id="insuranceAlertCards" style="display:none;"></div>
     <div class="suit-hint big-hint" id="suitHintCards">Pick a rank</div>
     <div class="pad-cards-rows" id="padCards">
-    <div class="ace-row-flex">
-      <button id="splitBtnCards" class="turn-btn split-btn">Split</button>
-      <div class="pad big-pad pad-row-ace" id="padCardsRowAce"></div>
-      <button id="checkBtnCards" class="turn-btn check-btn">Check ✓</button>
-    </div>
+      <div class="pad big-pad" id="padCardsRowAce">
+        <div class="pad-rank-slot" id="padCardsRowAceSlot"></div>
+        <div class="pad-empty-slot"></div>
+        <button id="checkBtnCards" class="turn-btn check-btn">Check ✓</button>
+        <button id="splitBtnCards" class="turn-btn split-btn">Split</button>
+      </div>
       <div class="pad big-pad" id="padCardsRow1"></div>
       <div class="pad big-pad" id="padCardsRow2"></div>
       <div class="pad big-pad" id="padCardsRow3"></div>
@@ -1677,7 +1655,18 @@
     }
     // Cards pad: each row built in its own explicit keypad order (K alone on top,
     // then rows mixing face cards with number cards), not the natural A-K rank order.
+    // The top row also holds an empty slot and the static Check/Split buttons, so it
+    // gets its rank button inserted into a dedicated slot rather than having its
+    // whole innerHTML wiped and rebuilt like the other rows.
     Object.keys(CARDS_ROWS).forEach(rowId=>{
+      if(rowId === 'padCardsRowAce'){
+        const slot = document.getElementById('padCardsRowAceSlot');
+        if(slot){
+          slot.innerHTML = '';
+          CARDS_ROWS[rowId].forEach(r=>slot.appendChild(makeRankButton(r, true)));
+        }
+        return;
+      }
       const rowEl = document.getElementById(rowId);
       if(!rowEl) return;
       rowEl.innerHTML = '';
