@@ -192,6 +192,12 @@
     color:var(--ink);
   }
   .hand-strength b{color:var(--gold-dark); font-weight:800;}
+  .hand-strength .hs-title{
+    font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.03em;
+    color:var(--ink-soft); margin-bottom:3px;
+  }
+  .hand-strength .hs-line{ display:flex; justify-content:space-between; gap:10px; }
+  .hand-strength .hs-line + .hs-line{ margin-top:1px; }
 
   .hot-shoe-alert{
     background:var(--gold-bg);
@@ -1358,7 +1364,7 @@
       <div class="heat" style="margin:0 0 12px;"><div class="marker" id="statHeatMarker" style="left:50%;"></div></div>
 
       <div class="advice" id="statAdvice" style="margin-bottom:10px;">Neutral shoe.</div>
-      <div class="hand-strength" id="statHandStrength" style="margin-bottom:10px;">Chance your next hand is a 20 or 21: —</div>
+      <div class="hand-strength" id="statHandStrength" style="margin-bottom:10px;"><div class="hs-title">Chance of a 20 or 21</div><div class="hs-line">You: —</div></div>
       <div class="hot-shoe-alert" id="hotShoeAlertStats" style="display:none;"></div>
       <div class="insurance-alert" id="insuranceAlertStats" style="display:none;"></div>
 
@@ -2632,6 +2638,32 @@
     };
   }
 
+  // Chance a SPECIFIC hand's initial 2 cards total 20 or 21, given whatever it's
+  // already been dealt (0, 1, or 2 cards so far). This is why two of your own seats
+  // can show genuinely different numbers at the same moment — not because of table
+  // position (a fresh, undealt hand always has the same baseline chance regardless of
+  // draw order), but because each of your hands may already hold a different number of
+  // known cards, and that changes what's still needed to land on 20 or 21.
+  function handTwentyOrTwentyOneChance(cards){
+    const known = (cards||[]).filter(c=>!c.hidden);
+    if(known.length >= 2) return null; // already resolved — not a "chance" anymore
+    const tot = totalRemaining();
+    if(known.length === 0){
+      const b = baselineBlackjackAnd20();
+      return b.blackjack + b.twenty;
+    }
+    if(tot <= 0) return 0;
+    const v = RANK_VALUE[known[0].rank];
+    let goodCount = 0;
+    [21-v, 20-v].forEach(needVal=>{
+      if(needVal < 2 || needVal > 11) return;
+      if(needVal === 11) goodCount += rankRemaining('A');
+      else if(needVal === 10) TEN_GROUP.forEach(r=>goodCount += rankRemaining(r));
+      else goodCount += rankRemaining(String(needVal));
+    });
+    return goodCount/tot;
+  }
+
   // Same odds calculations but against a hypothetical full fresh shoe of the current deck count —
   // used as the "normal" reference point for the hot-shoe alert.
   function freshShoeOdds(){
@@ -2994,9 +3026,13 @@
       document.getElementById('statAdvice').innerHTML = advice(tc);
       const handStrengthEl = document.getElementById('statHandStrength');
       if(handStrengthEl){
-        const bj20 = baselineBlackjackAnd20();
-        const combined = bj20.blackjack + bj20.twenty;
-        handStrengthEl.innerHTML = `Chance your next hand is a 20 or 21: <b>${(combined*100).toFixed(1)}%</b>`;
+        const seatIds = [...mySeats].sort((a,b)=>(seatTablePosition[a]||0)-(seatTablePosition[b]||0));
+        const lines = seatIds.map(id=>{
+          const chance = handTwentyOrTwentyOneChance(hands[id]);
+          const valueHtml = (chance===null) ? 'dealt' : `<b>${(chance*100).toFixed(1)}%</b>`;
+          return `<div class="hs-line">${handLabel(id)}: ${valueHtml}</div>`;
+        });
+        handStrengthEl.innerHTML = `<div class="hs-title">Chance of a 20 or 21</div>` + lines.join('');
       }
       document.getElementById('statPTen').textContent = tenPct;
       document.getElementById('statPAce').textContent = acePct;
