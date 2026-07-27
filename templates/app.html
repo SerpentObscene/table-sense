@@ -802,7 +802,7 @@
   /* ===== Stats view: visual dashboard for a second screen ===== */
   .stats-hero{
     display:grid;
-    grid-template-columns:1fr 1.2fr 1fr 1fr;
+    grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);
     gap:10px;
     margin-bottom:6px;
   }
@@ -1978,6 +1978,7 @@
             activeHand = id;
             renderTabs();
             renderSuitPad();
+            updateTurnButtons();
             pushState();
           });
           const mineToggle = tab.querySelector('.mine-toggle');
@@ -2039,6 +2040,10 @@
       xPercent += (xPercent > 50 ? -9 : 9);
       yPercent += 12;
     }
+    // Safety clamp: whatever produced xPercent/yPercent, a seat tab should never be able
+    // to land outside the arc's own visual bounds (e.g. down into the rank pad below it).
+    xPercent = Math.max(6, Math.min(94, xPercent));
+    yPercent = Math.max(10, Math.min(92, yPercent));
     tab.style.left = xPercent+'%';
     tab.style.top = yPercent+'%';
   }
@@ -2144,6 +2149,7 @@
         activeHand = 'player';
         renderTabs();
         renderSuitPad();
+        updateTurnButtons();
         pushState();
       }
     }
@@ -2223,6 +2229,7 @@
         activeHand = 'player';
         renderTabs();
         renderSuitPad();
+        updateTurnButtons();
         pushState();
       }
     }
