@@ -181,6 +181,17 @@
     color:var(--ink);
   }
   .advice b{color:var(--blue-dark); font-weight:800;}
+  .hand-strength{
+    background:var(--gold-bg);
+    border:2px solid var(--gold);
+    border-radius:16px;
+    padding:10px 14px;
+    font-size:0.82rem;
+    font-weight:600;
+    line-height:1.4;
+    color:var(--ink);
+  }
+  .hand-strength b{color:var(--gold-dark); font-weight:800;}
 
   .hot-shoe-alert{
     background:var(--gold-bg);
@@ -868,6 +879,11 @@
       font-size:clamp(0.66rem, 2vh, 0.78rem);
       padding:clamp(5px, 1vh, 8px) clamp(8px, 1.5vw, 12px);
     }
+    body.is-fullscreen #view-stats .hand-strength{
+      flex:0 0 auto; margin:0 !important;
+      font-size:clamp(0.6rem, 1.8vh, 0.72rem);
+      padding:clamp(5px, 1vh, 8px) clamp(8px, 1.5vw, 12px);
+    }
     body.is-fullscreen #view-stats .hot-shoe-alert,
     body.is-fullscreen #view-stats .insurance-alert{
       flex:0 0 auto; margin:0 !important;
@@ -988,6 +1004,7 @@
     #view-stats .stats-hero-cell.accent .stats-hero-val{ font-size:clamp(2.1rem, 3.1vw, 3.7rem); }
 
     #view-stats .advice{ font-size:clamp(0.78rem, 0.95vw, 1rem); padding:clamp(10px, 1.3vw, 18px) clamp(12px, 1.5vw, 20px); }
+    #view-stats .hand-strength{ font-size:clamp(0.7rem, 0.85vw, 0.9rem); padding:clamp(8px, 1.1vw, 14px) clamp(12px, 1.5vw, 20px); }
     #view-stats .hot-shoe-alert, #view-stats .insurance-alert{ font-size:clamp(0.74rem, 0.9vw, 0.95rem); padding:clamp(10px, 1.3vw, 18px) clamp(12px, 1.5vw, 20px); }
     #view-stats .insurance-alert .title{ font-size:clamp(0.82rem, 1vw, 1.05rem); }
 
@@ -1352,6 +1369,7 @@
       <div class="heat" style="margin:0 0 12px;"><div class="marker" id="statHeatMarker" style="left:50%;"></div></div>
 
       <div class="advice" id="statAdvice" style="margin-bottom:10px;">Neutral shoe.</div>
+      <div class="hand-strength" id="statHandStrength" style="margin-bottom:10px;">Chance your next hand is a 20 or 21: —</div>
       <div class="hot-shoe-alert" id="hotShoeAlertStats" style="display:none;"></div>
       <div class="insurance-alert" id="insuranceAlertStats" style="display:none;"></div>
 
@@ -1615,12 +1633,18 @@
   const SUIT_PAD_IDS = ['suitPad']; // suitPadCards replaced by the popover flow
   const HAND_TABS_IDS = ['handTabs','handTabsCards','handTabsStats'];
 
-  const CARDS_ROW_FOR_RANK = {
-    'A':'padCardsRowAce',
-    '2':'padCardsRow1','3':'padCardsRow1','4':'padCardsRow1','5':'padCardsRow1',
-    '6':'padCardsRow2','7':'padCardsRow2','8':'padCardsRow2','9':'padCardsRow2',
-    '10':'padCardsRow3','J':'padCardsRow3','Q':'padCardsRow3','K':'padCardsRow3'
+  // Keypad-style layout: K alone on top, then three rows mixing face cards with
+  // number cards rather than grouping strictly by rank.
+  const CARDS_ROWS = {
+    'padCardsRowAce': ['K'],
+    'padCardsRow1': ['Q','A','2','3'],
+    'padCardsRow2': ['J','4','5','6'],
+    'padCardsRow3': ['10','7','8','9']
   };
+  const CARDS_ROW_FOR_RANK = {};
+  Object.keys(CARDS_ROWS).forEach(rowId=>{
+    CARDS_ROWS[rowId].forEach(r=>{ CARDS_ROW_FOR_RANK[r] = rowId; });
+  });
 
   function makeRankButton(r, isCardsPad){
     const btn = document.createElement('button');
@@ -1651,14 +1675,13 @@
       homePad.innerHTML = '';
       RANKS.forEach(r=>homePad.appendChild(makeRankButton(r, false)));
     }
-    // Cards pad: Ace alone on its own centered row, then three rows of four.
-    Object.values(CARDS_ROW_FOR_RANK).filter((v,i,a)=>a.indexOf(v)===i).forEach(rowId=>{
+    // Cards pad: each row built in its own explicit keypad order (K alone on top,
+    // then rows mixing face cards with number cards), not the natural A-K rank order.
+    Object.keys(CARDS_ROWS).forEach(rowId=>{
       const rowEl = document.getElementById(rowId);
-      if(rowEl) rowEl.innerHTML = '';
-    });
-    RANKS.forEach(r=>{
-      const rowEl = document.getElementById(CARDS_ROW_FOR_RANK[r]);
-      if(rowEl) rowEl.appendChild(makeRankButton(r, true));
+      if(!rowEl) return;
+      rowEl.innerHTML = '';
+      CARDS_ROWS[rowId].forEach(r=>rowEl.appendChild(makeRankButton(r, true)));
     });
   }
 
@@ -2949,6 +2972,12 @@
       document.getElementById('statDecks').textContent = dl.toFixed(1);
       document.getElementById('statHeatMarker').style.left = (((clamped+5)/10)*100)+'%';
       document.getElementById('statAdvice').innerHTML = advice(tc);
+      const handStrengthEl = document.getElementById('statHandStrength');
+      if(handStrengthEl){
+        const bj20 = baselineBlackjackAnd20();
+        const combined = bj20.blackjack + bj20.twenty;
+        handStrengthEl.innerHTML = `Chance your next hand is a 20 or 21: <b>${(combined*100).toFixed(1)}%</b>`;
+      }
       document.getElementById('statPTen').textContent = tenPct;
       document.getElementById('statPAce').textContent = acePct;
       document.getElementById('statPBust').textContent = document.getElementById('pBust').textContent;
