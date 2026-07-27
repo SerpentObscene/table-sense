@@ -210,6 +210,18 @@
     color:var(--ink);
     margin-top:10px;
   }
+  .deviation-alert{
+    background:#2A1B3D;
+    border:2px solid var(--purple);
+    border-radius:16px;
+    padding:12px 14px;
+    font-size:0.86rem;
+    font-weight:700;
+    line-height:1.45;
+    color:var(--ink);
+    margin-top:10px;
+  }
+  .deviation-alert b{color:var(--purple-dark);}
 
   .insurance-alert{
     background:rgba(216,155,255,0.14);
@@ -341,8 +353,8 @@
     -webkit-overflow-scrolling:touch;
   }
   .hand-tab{
-    flex:0 0 auto;
-    min-width:118px;
+    flex:0 0 130px;
+    width:130px;
     border-radius:16px;
     border:2px solid var(--line);
     border-bottom:4px solid var(--line);
@@ -358,6 +370,11 @@
     color:var(--hand-color, var(--ink-soft));
     font-weight:800;
     display:flex; align-items:center; justify-content:space-between;
+    gap:3px;
+  }
+  .hand-tab .who-label{
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    flex:1; min-width:0;
   }
   .hand-tab .who::before{
     content:'';
@@ -785,7 +802,7 @@
   /* ===== Stats view: visual dashboard for a second screen ===== */
   .stats-hero{
     display:grid;
-    grid-template-columns:1fr 1.3fr 1fr;
+    grid-template-columns:1fr 1.2fr 1fr 1fr;
     gap:10px;
     margin-bottom:6px;
   }
@@ -828,6 +845,13 @@
     padding:14px;
   }
   .stats-card.wide{grid-column:1 / -1;}
+  .dealer-breakdown{
+    display:flex; gap:8px; margin-top:8px; padding-top:8px;
+    border-top:1px solid var(--line);
+  }
+  .dealer-breakdown .db-item{ flex:1; text-align:center; }
+  .dealer-breakdown .db-label{ font-size:0.6rem; font-weight:700; color:var(--ink-soft); }
+  .dealer-breakdown .db-val{ font-size:0.78rem; font-weight:800; color:var(--ink); }
   .stats-card-label{
     font-family:var(--body); font-weight:700; font-size:0.72rem;
     color:var(--ink-soft); margin-bottom:6px;
@@ -1202,6 +1226,7 @@
   </div>
 
   <div class="hot-shoe-alert" id="hotShoeAlert" style="display:none;"></div>
+  <div class="deviation-alert" id="deviationAlert" style="display:none;"></div>
 
   <section>
     <div class="section-title">Key odds</div>
@@ -1292,6 +1317,7 @@
   </button>
   <div class="cards-view-inner">
     <div class="hot-shoe-alert" id="hotShoeAlertCards" style="display:none;"></div>
+    <div class="deviation-alert" id="deviationAlertCards" style="display:none;"></div>
 
     <div class="table-arc-wrap">
       <div class="seat-count-control table-arc-count">
@@ -1360,12 +1386,17 @@
           <div class="stats-hero-label">Decks Left</div>
           <div class="stats-hero-val" id="statDecks">6.0</div>
         </div>
+        <div class="stats-hero-cell">
+          <div class="stats-hero-label">Bet</div>
+          <div class="stats-hero-val" id="statBetUnits">1u</div>
+        </div>
       </div>
       <div class="heat" style="margin:0 0 12px;"><div class="marker" id="statHeatMarker" style="left:50%;"></div></div>
 
       <div class="advice" id="statAdvice" style="margin-bottom:10px;">Neutral shoe.</div>
       <div class="hand-strength" id="statHandStrength" style="margin-bottom:10px;"><div class="hs-title">Chance of a 20 or 21</div><div class="hs-line">You: —</div></div>
       <div class="hot-shoe-alert" id="hotShoeAlertStats" style="display:none;"></div>
+      <div class="deviation-alert" id="deviationAlertStats" style="display:none;"></div>
       <div class="insurance-alert" id="insuranceAlertStats" style="display:none;"></div>
 
       <div class="stats-fill">
@@ -1381,6 +1412,7 @@
           <div class="stats-card wide">
             <div class="stats-card-label">P(dealer busts)</div>
             <div class="stats-card-val" id="statPBust">—</div>
+            <div class="dealer-breakdown" id="statDealerBreakdown"></div>
           </div>
           <div class="stats-card wide" id="statMyBustCard" style="display:none;">
             <div class="stats-card-label">P(you bust if you hit)</div>
@@ -1917,7 +1949,7 @@
         const mineToggleHtml = showMineToggle
           ? `<span class="mine-toggle ${mySeats.has(id)?'is-mine':''}" data-mine-toggle="${id}" title="Mark this seat as also yours">★</span>`
           : '';
-        tab.innerHTML = `<div class="who">${handLabel(id)}${mineToggleHtml}${clearChip}</div>
+        tab.innerHTML = `<div class="who"><span class="who-label">${handLabel(id)}</span>${mineToggleHtml}${clearChip}</div>
           <div class="total-row" data-total="${id}"></div>
           <div class="cards" data-display="${id}">${handToChips(hands[id]||[])}</div>`;
         if(isArc){
@@ -2500,45 +2532,68 @@
     }
   }
 
+  // Standard 1-2-4-6-8 unit bet ramp scaled to true count — a common, moderate-risk
+  // spread for a 6-deck shoe. "Units" are relative to your table minimum, not real money.
+  function suggestedBetUnits(tc){
+    if(tc >= 5) return 8;
+    if(tc >= 4) return 6;
+    if(tc >= 3) return 4;
+    if(tc >= 2) return 2;
+    return 1;
+  }
+
   // ---------- dealer bust (exact recursion, rank-level, suit-agnostic) ----------
-  function dealerBustProbability(upRank, deckStateByRank){
+  // Recursive draw that tracks which specific total (17-21) the dealer actually ends
+  // on — a fuller picture for close hit/stand calls than the bust probability alone.
+  function dealerOutcomeDistribution(upRank, deckStateByRank){
     function total(state){ let t=0; for(const r in state) t+=state[r]; return t; }
-    function draw(sumHigh, hasSoftAce, state){
+    const result = {17:0, 18:0, 19:0, 20:0, 21:0, bust:0};
+    function draw(sumHigh, hasSoftAce, state, prob){
       let total_ = sumHigh, soft = hasSoftAce;
       while(total_ > 21 && soft){ total_ -= 10; soft=false; }
-      if(total_ > 21) return 1;
-      if(total_ >= 17) return 0; // stands on hard 17+ and soft 17 (common rule)
+      if(total_ > 21){ result.bust += prob; return; }
+      if(total_ >= 17){ result[total_] += prob; return; }
       const tot = total(state);
-      if(tot===0) return 0;
-      let bustProb = 0;
+      if(tot===0){
+        if(total_>=17 && total_<=21) result[total_] += prob; else result.bust += prob;
+        return;
+      }
       for(const r of RANKS){
         const c = state[r];
         if(c<=0) continue;
         const p = c/tot;
         state[r]--;
-        bustProb += p * draw(sumHigh+RANK_VALUE[r], hasSoftAce||(r==='A'), state);
+        draw(sumHigh+RANK_VALUE[r], hasSoftAce||(r==='A'), state, prob*p);
         state[r]++;
       }
-      return bustProb;
     }
     const stateCopy = Object.assign({}, deckStateByRank);
     if(stateCopy[upRank] > 0) stateCopy[upRank]--;
-    return draw(RANK_VALUE[upRank], upRank==='A', stateCopy);
+    draw(RANK_VALUE[upRank], upRank==='A', stateCopy, 1);
+    return result;
   }
 
   function renderBust(){
     const el = document.getElementById('pBust');
+    const breakdownEl = document.getElementById('statDealerBreakdown');
     const dealerCards = hands.dealer || [];
     if(dealerCards.length === 0){
       el.textContent = "Enter dealer's upcard below";
       el.style.color = '';
+      if(breakdownEl) breakdownEl.innerHTML = '';
       return;
     }
     const upRank = dealerCards[0].rank;
     const rankCounts = {}; RANKS.forEach(r=>rankCounts[r]=rankRemaining(r));
-    const p = dealerBustProbability(upRank, rankCounts);
+    const dist = dealerOutcomeDistribution(upRank, rankCounts);
+    const p = dist.bust;
     el.textContent = (p*100).toFixed(1)+'% (upcard '+upRank+')';
     el.style.color = p>=0.4 ? 'var(--green-dark)' : (p<=0.25 ? 'var(--red-dark)' : 'var(--gold-dark)');
+    if(breakdownEl){
+      breakdownEl.innerHTML = [17,18,19,20,21].map(t=>
+        `<div class="db-item"><div class="db-label">${t}</div><div class="db-val">${(dist[t]*100).toFixed(0)}%</div></div>`
+      ).join('');
+    }
   }
 
   function renderMyBust(){
@@ -2578,6 +2633,70 @@
     els.forEach(el=>{
       el.style.display = 'block';
       el.innerHTML = `<div class="title">🂡 Dealer shows an Ace</div><div class="body">P(dealer has blackjack) = <span class="pctval">${pctText}</span> — ${verdict}</div>`;
+    });
+  }
+
+  // Standard Hi-Lo Illustrious 18 index plays (6-deck baseline; shifts by ~1 point for
+  // different rules/decks). Insurance is handled separately above with exact combinatorics
+  // rather than the +3 approximation, since the app already computes the precise breakeven.
+  // "above": deviate to `action` once TC >= index. "below": basic strategy is already the
+  // listed default (Stand) — deviate to Hit once TC drops below index.
+  const ILLUSTRIOUS_18 = [
+    {desc:'16 vs 10', total:16, dealer:['10','J','Q','K'], index:0, dir:'above', action:'Stand'},
+    {desc:'15 vs 10', total:15, dealer:['10','J','Q','K'], index:4, dir:'above', action:'Stand'},
+    {desc:'Pair 10s vs 5', pair:true, dealer:['5'], index:5, dir:'above', action:'Split'},
+    {desc:'Pair 10s vs 6', pair:true, dealer:['6'], index:4, dir:'above', action:'Split'},
+    {desc:'10 vs 10', total:10, dealer:['10','J','Q','K'], index:4, dir:'above', action:'Double', twoCardOnly:true},
+    {desc:'12 vs 3', total:12, dealer:['3'], index:2, dir:'above', action:'Stand'},
+    {desc:'12 vs 2', total:12, dealer:['2'], index:3, dir:'above', action:'Stand'},
+    {desc:'11 vs A', total:11, dealer:['A'], index:1, dir:'above', action:'Double', twoCardOnly:true},
+    {desc:'9 vs 2', total:9, dealer:['2'], index:1, dir:'above', action:'Double', twoCardOnly:true},
+    {desc:'10 vs A', total:10, dealer:['A'], index:4, dir:'above', action:'Double', twoCardOnly:true},
+    {desc:'9 vs 7', total:9, dealer:['7'], index:3, dir:'above', action:'Double', twoCardOnly:true},
+    {desc:'16 vs 9', total:16, dealer:['9'], index:5, dir:'above', action:'Stand'},
+    {desc:'13 vs 2', total:13, dealer:['2'], index:-1, dir:'below', action:'Hit'},
+    {desc:'12 vs 4', total:12, dealer:['4'], index:0, dir:'below', action:'Hit'},
+    {desc:'12 vs 5', total:12, dealer:['5'], index:-2, dir:'below', action:'Hit'},
+    {desc:'12 vs 6', total:12, dealer:['6'], index:-1, dir:'below', action:'Hit'},
+    {desc:'13 vs 3', total:13, dealer:['3'], index:-2, dir:'below', action:'Hit'},
+  ];
+  function checkDeviation(cards, dealerUpRank, tc){
+    if(!cards || cards.length===0 || !dealerUpRank) return null;
+    const v = handValue(cards);
+    if(v.status==='bust' || v.status==='blackjack') return null;
+    for(const dev of ILLUSTRIOUS_18){
+      if(!dev.dealer.includes(dealerUpRank)) continue;
+      if(dev.twoCardOnly && cards.length!==2) continue;
+      if(dev.pair){
+        if(cards.length!==2) continue;
+        if(RANK_VALUE[cards[0].rank]!==10 || RANK_VALUE[cards[1].rank]!==10) continue;
+      } else {
+        if(v.soft) continue; // these indices are for hard totals
+        if(v.total !== dev.total) continue;
+      }
+      const triggered = dev.dir==='above' ? (tc >= dev.index) : (tc < dev.index);
+      if(triggered) return dev;
+    }
+    return null;
+  }
+
+  function renderDeviation(tc){
+    const els = ['deviationAlert','deviationAlertCards','deviationAlertStats'].map(id=>document.getElementById(id)).filter(Boolean);
+    const cards = hands[activeHand] || [];
+    const dealerCards = hands.dealer || [];
+    const upcardKnown = dealerCards.length>=1 && !dealerCards[0].hidden;
+    if(activeHand==='dealer' || !upcardKnown){
+      els.forEach(el=>el.style.display='none');
+      return;
+    }
+    const dev = checkDeviation(cards, dealerCards[0].rank, tc);
+    if(!dev){
+      els.forEach(el=>el.style.display='none');
+      return;
+    }
+    els.forEach(el=>{
+      el.style.display = 'block';
+      el.innerHTML = `⚡ <b>Count says ${dev.action}</b> — ${dev.desc} (index ${dev.index>=0?'+':''}${dev.index}, TC ${tc>=0?'+':''}${tc.toFixed(1)})`;
     });
   }
 
@@ -3011,6 +3130,7 @@
     renderBust();
     renderMyBust();
     renderInsurance();
+    renderDeviation(tc);
     renderPerfectPairs();
     syncUpcard21();
     render21plus1();
@@ -3022,6 +3142,7 @@
       statRunning.className = 'stats-hero-val '+(rc>0?'pos':rc<0?'neg':'');
       document.getElementById('statTrue').textContent = (tc>0?'+':'')+tc.toFixed(1);
       document.getElementById('statDecks').textContent = dl.toFixed(1);
+      document.getElementById('statBetUnits').textContent = suggestedBetUnits(tc)+'u';
       document.getElementById('statHeatMarker').style.left = (((clamped+5)/10)*100)+'%';
       document.getElementById('statAdvice').innerHTML = advice(tc);
       const handStrengthEl = document.getElementById('statHandStrength');
