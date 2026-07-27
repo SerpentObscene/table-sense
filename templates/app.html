@@ -677,7 +677,7 @@
   .big-pad button .remain{font-size:0.62rem;}
   .pad-rank-slot{ display:contents; } /* lets its button act as a direct grid child, same as any other rank cell */
   .pad-empty-slot{ /* intentionally blank — just holds its column */ }
-  .turn-btn{
+  button.turn-btn{
     width:100%;
     border-radius:18px;
     aspect-ratio:1/1.05;
@@ -693,17 +693,17 @@
     padding:4px;
   }
   .turn-btn:active{transform:translateY(2px);}
-  .check-btn{
+  .turn-btn.check-btn{
     background:var(--green);
     color:#0E2600;
     border-bottom:4px solid var(--green-dark);
   }
-  .split-btn{
+  .turn-btn.split-btn{
     background:var(--purple);
     color:#2A1B3D;
     border-bottom:4px solid var(--purple-dark, #B27FE8);
   }
-  .turn-btn:disabled{opacity:0.35; cursor:default; transform:none;}
+  button.turn-btn:disabled{opacity:0.35; cursor:default; transform:none;}
   .turn-btn-wide{
     flex:1;
     width:auto;
