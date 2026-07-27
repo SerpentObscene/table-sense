@@ -1289,10 +1289,10 @@
     <div class="suit-hint big-hint" id="suitHintCards">Pick a rank</div>
     <div class="pad-cards-rows" id="padCards">
       <div class="pad big-pad" id="padCardsRowAce">
-        <div class="pad-rank-slot" id="padCardsRowAceSlot"></div>
-        <div class="pad-empty-slot"></div>
         <button id="checkBtnCards" class="turn-btn check-btn">Check ✓</button>
         <button id="splitBtnCards" class="turn-btn split-btn">Split</button>
+        <div class="pad-empty-slot"></div>
+        <div class="pad-rank-slot" id="padCardsRowAceSlot"></div>
       </div>
       <div class="pad big-pad" id="padCardsRow1"></div>
       <div class="pad big-pad" id="padCardsRow2"></div>
@@ -1615,9 +1615,9 @@
   // number cards rather than grouping strictly by rank.
   const CARDS_ROWS = {
     'padCardsRowAce': ['K'],
-    'padCardsRow1': ['Q','A','2','3'],
-    'padCardsRow2': ['J','4','5','6'],
-    'padCardsRow3': ['10','7','8','9']
+    'padCardsRow1': ['A','2','3','Q'],
+    'padCardsRow2': ['4','5','6','J'],
+    'padCardsRow3': ['7','8','9','10']
   };
   const CARDS_ROW_FOR_RANK = {};
   Object.keys(CARDS_ROWS).forEach(rowId=>{
